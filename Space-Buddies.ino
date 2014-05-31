@@ -53,11 +53,11 @@ typedef struct _note_
 	int duration;
 } note;
 
-typedef struct _player_
+typedef struct _tune_
 {
 	note notes[MAX_BARS * 24];
 	int curr_duration;
-} player;
+} tune;
 
 player players[NUM_PLAYERS];
 int count_types[3] = { 4, 3, 2 };
