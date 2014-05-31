@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #define MAX_BARS 50
-#define NUM_PLAYERS 2
 
 #define tone_C 1911
 #define tone_C1 1804
@@ -59,14 +58,24 @@ typedef struct _tune_
 	int curr_duration;
 } tune;
 
-player players[NUM_PLAYERS];
 int count_types[3] = { 4, 3, 2 };
 
 // mario
 int mario_m[] = { tone_e, tone_e, tone_e, tone_c, tone_e, tone_g, tone_G, tone_c, tone_G, tone_E, tone_A, tone_B, tone_Bb, tone_A, tone_G, tone_e, tone_g, tone_a, tone_f, tone_g, tone_e, tone_c, tone_d, tone_B, tone_c };
 int mario_r[] = { 6, 12, 12, 6, 12, 24, 24, 18, 18, 18, 12, 12, 6, 12, 8, 8, 8, 12, 6, 12, 12, 6, 6, 6, 12 };
 
-int scales[12][] = {
+tune mario = {
+  {
+    { tone_e, 6 },  { tone_e, 12 },  { tone_e, 12 }, { tone_c, 6 },  { tone_e, 12 },  { tone_g, 24 },
+    { tone_G, 24 }, { tone_c, 18 },  { tone_G, 18 }, { tone_E, 18 }, { tone_A, 12 },  { tone_B, 12 },
+    { tone_Bb, 6 }, { tone_A, 12 },  { tone_G, 8 },  { tone_e, 8 },  { tone_g, 8 },   { tone_a, 12 },
+    { tone_f, 6 },  { tone_g, 12 },  { tone_e, 12 }, { tone_c, 6 },  { tone_d, 6 },   { tone_B, 6 },
+    { tone_c, 12 }
+  },
+  288
+};
+
+int scales[12][18] = {
 	{ tone_A, tone_a, tone_B, tone_b, tone_C, tone_c, tone_D, tone_d, tone_E, tone_e, tone_F, tone_f, tone_E, tone_e, tone_F, tone_f, tone_G, tone_g }, // a minor
 	{ tone_E, tone_e, tone_F1, tone_f1, tone_G, tone_g, tone_A, tone_a, tone_B, tone_b, tone_C, tone_c, tone_D, tone_d }, // e minor
 	{ tone_B, tone_b, tone_C1, tone_c1, tone_D, tone_d, tone_E, tone_e, tone_F1, tone_f1, tone_G, tone_g, tone_A, tone_a }, // b minor
@@ -95,35 +104,28 @@ void setup()
 {
     pinMode(PIEZO, OUTPUT);
     delay(2000);
-    make_tune(5);
+    play_my_tune(mario);
+    //make_tune(5);
     //play_my_tune(mario_r, mario_m, sizeof(mario_r));
 }
 
-/*void make_tune(int bars)
+void make_tune(int bars)
 {
-  play_tune = (int *) malloc(2);
-  play_tune[0] = 1;
-  play_tune[1] = 5;
-  play_dur = (int *) malloc(2);
-  play_dur[0] = 8;
-  play_dur[1] = 4;
-
-  int maxScales = sizeof(scales);
-  int* scale = scales[random(0,maxScales-1)];
-  int maxScale = sizeof(scale);
-  int maxDuration = sizeof(durations);
-  for (int i = 0; i < sizeof(bars); i++) {
-    int durationCount = 0;
-    int* bar[1];
-    while (1 / durationCount != 1) {
-      int tone = scale[random(0,maxScale-1)];
-      int duration = scale[random(0,maxDuration-1)];
-      durationCount += duration;
-    }
-  }
+  // int scale[] = scales[random(0,12)];
+  // int maxScale = sizeof(scale);
+  // int maxDuration = sizeof(durations);
+  // for (int i = 0; i < sizeof(bars); i++) {
+  //   int durationCount = 0;
+  //   int* bar[1];
+  //   while (1 / durationCount != 1) {
+  //     int tone = scale[random(0,maxScale-1)];
+  //     int duration = scale[random(0,maxDuration-1)];
+  //     durationCount += duration;
+  //   }
+  // }
 }
-*/
 
+/*
 void make_tune(int bars)
 {
   int len = random(10,20);
@@ -140,20 +142,23 @@ void make_tune(int bars)
   }
   play_my_tune(play_dur, play_tune, len);
 }
+*/
  
 void loop()
 {
   //play_my_tune(play_dur, play_tune, sizeof(play_tune));
 }
 
-void play_my_tune(int dur[], int tune[], int tlen)
+/*void play_my_tune(int dur[], int tune[], int tlen)*/
+void play_my_tune(tune t)
 {
     //const int LEN = (sizeof(dur) + 1) / 4;
-    const int LEN = (tlen + 1) / 4;
+    int LEN = sizeof(t.notes) / sizeof(note);
+    //const int LEN = (tlen + 1) / 4;
     for (int i=0; i < LEN; i++)
     {
-        int tom = tune[i];
-        int tempo = dur[i];
+        int tom = t.notes[i].tone;
+        int tempo = t.notes[i].duration;
         long tvalue = tempo * vel;
         tocar(tom, tvalue);
         delayMicroseconds(1000); //pause between notes
