@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-
 #define MAX_BARS 50
 
 #define tone_C 1911
@@ -104,9 +101,8 @@ void setup()
 {
     pinMode(PIEZO, OUTPUT);
     delay(2000);
-    play_my_tune(mario);
-    //make_tune(5);
-    //play_my_tune(mario_r, mario_m, sizeof(mario_r));
+    //play_original();  // Somehow this works, but only when play_my_tune() is commented out
+    play_my_tune(mario);  // This just does not work...
 }
 
 void make_tune(int bars)
@@ -124,41 +120,32 @@ void make_tune(int bars)
   //   }
   // }
 }
-
-/*
-void make_tune(int bars)
-{
-  int len = random(10,20);
-  play_tune = (int**) realloc(play_tune, len);
-  play_dur = (int**) realloc(play_dur, len);
-  
-  int scalesLen = sizeof(scales);
-  int* scale = scales[random(0,scalesLen-1)];
-  int scaleLen = sizeof(scale);
-  int durationLen = sizeof(durations);
-  for (int i = 0; i < len; i++) {
-    play_tune[i] = scale[random(0,scaleLen-1)];
-    play_dur[i] = durations[random(0,durationLen-1)];
-  }
-  play_my_tune(play_dur, play_tune, len);
-}
-*/
  
 void loop()
 {
   //play_my_tune(play_dur, play_tune, sizeof(play_tune));
 }
 
-/*void play_my_tune(int dur[], int tune[], int tlen)*/
-void play_my_tune(tune t)
+void play_original()
 {
-    //const int LEN = (sizeof(dur) + 1) / 4;
-    int LEN = sizeof(t.notes) / sizeof(note);
-    //const int LEN = (tlen + 1) / 4;
+    int LEN = sizeof(mario_r) / sizeof(int);
     for (int i=0; i < LEN; i++)
     {
-        int tom = t.notes[i].tone;
-        int tempo = t.notes[i].duration;
+        int tom = mario_m[i];
+        int tempo = mario_r[i];
+        long tvalue = tempo * vel;
+        tocar(tom, tvalue);
+        delayMicroseconds(1000); //pause between notes
+    }
+}
+
+void play_my_tune(tune t)
+{
+    int LEN = sizeof(t) / sizeof(tune);
+    for (int i=0; i < LEN; i++)
+    {
+        int tom = mario.notes[i].tone;
+        int tempo = mario.notes[i].duration;
         long tvalue = tempo * vel;
         tocar(tom, tvalue);
         delayMicroseconds(1000); //pause between notes
