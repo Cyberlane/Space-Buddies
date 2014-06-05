@@ -1,124 +1,61 @@
-#define MAX_BARS 50
+#define NOTE(tone, dur) ((((((byte)(dur)) & 0x07)<<5) | (((byte)(tone)) & 0x1F)))
+#define GET_TONE(note) ((note) & 0x1F)
+#define GET_DURATION(note) (((note)>>5) & 0x07)
+#define END_MARKER 0XFF 
 
-#define tone_C 1911
-#define tone_C1 1804
-#define tone_D 1703
-#define tone_Eb 1607
-#define tone_E 1517
-#define tone_F 1432
-#define tone_F1 1352
-#define tone_G 1276
-#define tone_Ab 1204
-#define tone_A 1136
-#define tone_Bb 1073
-#define tone_B 1012
-#define tone_c 955
-#define tone_c1 902
-#define tone_d 851
-#define tone_eb 803
-#define tone_e 758
-#define tone_f 716
-#define tone_f1 676
-#define tone_g 638
-#define tone_ab 602
-#define tone_a 568
-#define tone_bb 536
-#define tone_b 506
-#define tone_p -1  //pause
-#define tone_null 0
-
-typedef enum
-{
-	A_MINOR,
-	E_MINOR,
-	B_MINOR,
-	F_SHARP,
-	C_SHARP,
-	G_SHARP,
-	E_FLAT,
-	B_FLAT,
-	F_MINOR,
-	C_MINOR,
-	G_MINOR,
-	D_MINOR
-} scale_t;
-
-typedef struct _note_
-{
-	int tone;
-	int duration;
-} note;
-
-typedef struct _tune_
-{
-	note notes[MAX_BARS * 24];
-	int curr_duration;
-} tune;
-
-int count_types[3] = { 4, 3, 2 };
+enum {
+  T_REST,
+  T_C,
+  T_CS,
+  T_D,
+  T_EB,
+  T_E,
+  T_F,
+  T_FS,
+  T_G,
+  T_AB,
+  T_A,
+  T_BB,
+  T_B,
+  T_CX,
+  T_CSX,
+  T_DX,
+  T_EBX,
+  T_EX,
+  T_FX,
+  T_FSX,
+  T_GX,
+  T_ABX,
+  T_AX,
+  T_BBX,
+  T_BX
+};
 
 // mario
-int mario_m[] = { tone_e, tone_e, tone_e, tone_c, tone_e, tone_g, tone_G, tone_c, tone_G, tone_E, tone_A, tone_B, tone_Bb, tone_A, tone_G, tone_e, tone_g, tone_a, tone_f, tone_g, tone_e, tone_c, tone_d, tone_B, tone_c };
-int mario_r[] = { 6, 12, 12, 6, 12, 24, 24, 18, 18, 18, 12, 12, 6, 12, 8, 8, 8, 12, 6, 12, 12, 6, 6, 6, 12 };
+// int mario_m[] = { tone_e, tone_e, tone_e, tone_c, tone_e, tone_g, tone_G, tone_c, tone_G, tone_E, tone_A, tone_B, tone_Bb, tone_A, tone_G, tone_e, tone_g, tone_a, tone_f, tone_g, tone_e, tone_c, tone_d, tone_B, tone_c };
+// int mario_r[] = { 6, 12, 12, 6, 12, 24, 24, 18, 18, 18, 12, 12, 6, 12, 8, 8, 8, 12, 6, 12, 12, 6, 6, 6, 12 };
 
-tune mario = {
-  {
-    { tone_e, 6 },  { tone_e, 12 },  { tone_e, 12 }, { tone_c, 6 },  { tone_e, 12 },  { tone_g, 24 },
-    { tone_G, 24 }, { tone_c, 18 },  { tone_G, 18 }, { tone_E, 18 }, { tone_A, 12 },  { tone_B, 12 },
-    { tone_Bb, 6 }, { tone_A, 12 },  { tone_G, 8 },  { tone_e, 8 },  { tone_g, 8 },   { tone_a, 12 },
-    { tone_f, 6 },  { tone_g, 12 },  { tone_e, 12 }, { tone_c, 6 },  { tone_d, 6 },   { tone_B, 6 },
-    { tone_c, 12 }
-  },
-  288
+byte mario[] = {
+    NOTE(T_EX, 2),  NOTE(T_EX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_EX, 4),  NOTE(T_GX, 7),
+    NOTE(T_G, 7),   NOTE(T_CX, 6),  NOTE(T_G, 6),   NOTE(T_E, 6),   NOTE(T_A, 4),   NOTE(T_B, 4),
+    NOTE(T_BB, 2),  NOTE(T_A, 4),   NOTE(T_G, 3),   NOTE(T_EX, 3),  NOTE(T_GX, 3),  NOTE(T_AX, 4),
+    NOTE(T_FX, 2),  NOTE(T_GX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_DX, 2),  NOTE(T_B, 2),
+    NOTE(T_CX, 4),  END_MARKER
 };
 
-int scales[12][18] = {
-	{ tone_A, tone_a, tone_B, tone_b, tone_C, tone_c, tone_D, tone_d, tone_E, tone_e, tone_F, tone_f, tone_E, tone_e, tone_F, tone_f, tone_G, tone_g }, // a minor
-	{ tone_E, tone_e, tone_F1, tone_f1, tone_G, tone_g, tone_A, tone_a, tone_B, tone_b, tone_C, tone_c, tone_D, tone_d }, // e minor
-	{ tone_B, tone_b, tone_C1, tone_c1, tone_D, tone_d, tone_E, tone_e, tone_F1, tone_f1, tone_G, tone_g, tone_A, tone_a }, // b minor
-	{ tone_F1, tone_f1, tone_Ab, tone_ab, tone_A, tone_a, tone_B, tone_b, tone_C1, tone_c1, tone_D, tone_d, tone_E, tone_e }, // f sharp
-	{ tone_C1, tone_c1, tone_Eb, tone_eb, tone_E, tone_e, tone_F1, tone_f1, tone_A, tone_a, tone_B, tone_b }, // c sharp
-	{ tone_Eb, tone_eb, tone_Bb, tone_bb, tone_B, tone_b, tone_C1, tone_c1, tone_Eb, tone_eb, tone_E, tone_e, tone_F1, tone_f1 }, // g sharp
-	{ tone_Eb, tone_eb, tone_F, tone_f, tone_F1, tone_f1, tone_Ab, tone_ab, tone_Bb, tone_bb, tone_C, tone_c, tone_F, tone_f }, // e flat
-	{ tone_Bb, tone_bb, tone_C, tone_c, tone_C1, tone_c1, tone_Eb, tone_eb, tone_F, tone_f, tone_F1, tone_f1, tone_Ab, tone_ab }, // b flat
-	{ tone_F, tone_f, tone_G, tone_g, tone_Ab, tone_ab, tone_Bb, tone_bb, tone_C, tone_c, tone_C1, tone_c1, tone_Eb, tone_eb }, // f minor
-	{ tone_C, tone_c, tone_D, tone_d, tone_Eb, tone_eb, tone_F, tone_f, tone_G, tone_g, tone_Ab, tone_ab, tone_Bb, tone_bb }, // c minor
-	{ tone_G, tone_g, tone_A, tone_a, tone_Bb, tone_bb, tone_C, tone_c, tone_D, tone_d, tone_Eb, tone_eb, tone_F, tone_f }, // g minor
-	{ tone_D, tone_d, tone_E, tone_e, tone_F, tone_f, tone_G, tone_g, tone_A, tone_a, tone_Bb, tone_bb, tone_C, tone_c } // d minor
-};
-
-int durations[] = { 2, 4, 6, 8, 12, 16, 24 };
+int durations[] = { 2, 4, 6, 8, 12, 16, 18, 24 };
  
 const int PIEZO = 6;
  
 long vel = 20000;
 
-
-int play_tune[0];
-int play_dur[0];
-
 void setup()
 {
     pinMode(PIEZO, OUTPUT);
     delay(2000);
+    play(mario);
     //play_original();  // Somehow this works, but only when play_my_tune() is commented out
-    play_my_tune(mario);  // This just does not work...
-}
-
-void make_tune(int bars)
-{
-  // int scale[] = scales[random(0,12)];
-  // int maxScale = sizeof(scale);
-  // int maxDuration = sizeof(durations);
-  // for (int i = 0; i < sizeof(bars); i++) {
-  //   int durationCount = 0;
-  //   int* bar[1];
-  //   while (1 / durationCount != 1) {
-  //     int tone = scale[random(0,maxScale-1)];
-  //     int duration = scale[random(0,maxDuration-1)];
-  //     durationCount += duration;
-  //   }
-  // }
+    // play_my_tune(mario);  // This just does not work...
 }
  
 void loop()
@@ -126,31 +63,131 @@ void loop()
   //play_my_tune(play_dur, play_tune, sizeof(play_tune));
 }
 
-void play_original()
+void play(byte *pByte)
 {
-    int LEN = sizeof(mario_r) / sizeof(int);
-    for (int i=0; i < LEN; i++)
+  int counter = 1703;
+    while(*pByte != END_MARKER)
     {
-        int tom = mario_m[i];
-        int tempo = mario_r[i];
-        long tvalue = tempo * vel;
-        tocar(tom, tvalue);
-        delayMicroseconds(1000); //pause between notes
+        int tone = 0;
+        int duration = 0;
+        switch (GET_TONE(*pByte)) {
+          case T_C:
+            tone = 1911;
+            break;
+          case T_CS:
+            tone = 1804;
+            break;
+          case T_D:
+            tone = 1703;
+            break;
+          case T_EB:
+            tone = 1607;
+            break;
+          case T_E:
+            tone = 1517;
+            break;
+          case T_F:
+            tone = 1432;
+            break;
+          case T_FS:
+            tone = 1352;
+            break;
+          case T_G:
+            tone = 1276;
+            break;
+          case T_AB:
+            tone = 1204;
+            break;
+          case T_A:
+            tone = 1136;
+            break;
+          case T_BB:
+            tone = 1073;
+            break;
+          case T_B:
+            tone = 1012;
+            break;
+          case T_CX:
+            tone = 955;
+            break;
+          case T_CSX:
+            tone = 902;
+            break;
+          case T_DX:
+            tone = 851;
+            break;
+          case T_EBX:
+            tone = 803;
+            break;
+          case T_EX:
+            tone = 758;
+            break;
+          case T_FX:
+            tone = 716;
+            break;
+          case T_FSX:
+            tone = 676;
+            break;
+          case T_GX:
+            tone = 638;
+            break;
+          case T_ABX:
+            tone = 602;
+            break;
+          case T_AX:
+            tone = 568;
+            break;
+          case T_BBX:
+            tone = 536;
+            break;
+          case T_BX:
+            tone = 506;
+            break;
+        }
+        switch (GET_DURATION(*pByte)) {
+          case 0:
+            duration = 2;
+            break;
+          case 1:
+            duration = 4;
+            break;
+          case 2:
+            duration = 6;
+            break;
+          case 3:
+            duration = 8;
+            break;
+          case 4:
+            duration = 12;
+            break;
+          case 5:
+            duration = 16;
+            break;
+          case 6:
+            duration = 18;
+            break;
+          case 7:
+            duration = 24;
+            break;
+        }
+        long tvalue = duration * vel;
+        tocar(tone, tvalue);
+        ++pByte;
     }
 }
 
-void play_my_tune(tune t)
-{
-    int LEN = sizeof(t) / sizeof(tune);
-    for (int i=0; i < LEN; i++)
-    {
-        int tom = mario.notes[i].tone;
-        int tempo = mario.notes[i].duration;
-        long tvalue = tempo * vel;
-        tocar(tom, tvalue);
-        delayMicroseconds(1000); //pause between notes
-    }
-}
+// void play_original()
+// {
+//     int LEN = sizeof(mario_r) / sizeof(int);
+//     for (int i=0; i < LEN; i++)
+//     {
+//         int tom = mario_m[i];
+//         int tempo = mario_r[i];
+//         long tvalue = tempo * vel;
+//         tocar(tom, tvalue);
+//         delayMicroseconds(1000); //pause between notes
+//     }
+// }
  
 void tocar(int tom, long tempo_value)
 {
