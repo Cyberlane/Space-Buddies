@@ -31,16 +31,49 @@ enum {
   T_BX
 };
 
-// mario
-// int mario_m[] = { tone_e, tone_e, tone_e, tone_c, tone_e, tone_g, tone_G, tone_c, tone_G, tone_E, tone_A, tone_B, tone_Bb, tone_A, tone_G, tone_e, tone_g, tone_a, tone_f, tone_g, tone_e, tone_c, tone_d, tone_B, tone_c };
-// int mario_r[] = { 6, 12, 12, 6, 12, 24, 24, 18, 18, 18, 12, 12, 6, 12, 8, 8, 8, 12, 6, 12, 12, 6, 6, 6, 12 };
-
 byte mario[] = {
-    NOTE(T_EX, 2),  NOTE(T_EX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_EX, 4),  NOTE(T_GX, 7),
-    NOTE(T_G, 7),   NOTE(T_CX, 6),  NOTE(T_G, 6),   NOTE(T_E, 6),   NOTE(T_A, 4),   NOTE(T_B, 4),
-    NOTE(T_BB, 2),  NOTE(T_A, 4),   NOTE(T_G, 3),   NOTE(T_EX, 3),  NOTE(T_GX, 3),  NOTE(T_AX, 4),
-    NOTE(T_FX, 2),  NOTE(T_GX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_DX, 2),  NOTE(T_B, 2),
-    NOTE(T_CX, 4),  END_MARKER
+  NOTE(T_EX, 2),  NOTE(T_EX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_EX, 4),  NOTE(T_GX, 7),
+  NOTE(T_G, 7),   NOTE(T_CX, 6),  NOTE(T_G, 6),   NOTE(T_E, 6),   NOTE(T_A, 4),   NOTE(T_B, 4),
+  NOTE(T_BB, 2),  NOTE(T_A, 4),   NOTE(T_G, 3),   NOTE(T_EX, 3),  NOTE(T_GX, 3),  NOTE(T_AX, 4),
+  NOTE(T_FX, 2),  NOTE(T_GX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_DX, 2),  NOTE(T_B, 2),
+  NOTE(T_CX, 4),  END_MARKER
+};
+
+byte zelda[] = {
+  NOTE(T_G, 3), NOTE(T_E, 3), NOTE(T_D, 3), NOTE(T_C, 3), NOTE(T_D, 3), 
+  NOTE(T_E, 3), NOTE(T_G, 3), NOTE(T_E, 3), NOTE(T_D, 3), NOTE(T_C, 3), 
+  NOTE(T_D, 1), NOTE(T_E, 1), NOTE(T_D, 1), NOTE(T_E, 1), NOTE(T_G, 3), 
+  NOTE(T_E, 3), NOTE(T_G, 3), NOTE(T_A, 3), NOTE(T_E, 3), NOTE(T_A, 3), 
+  NOTE(T_G, 3), NOTE(T_E, 3), NOTE(T_D, 3), NOTE(T_C, 5), END_MARKER
+};
+
+byte smoke[] = {
+  NOTE(T_E, 4), NOTE(T_G, 4), NOTE(T_A, 6), NOTE(T_E, 4), NOTE(T_G, 4), 
+  NOTE(T_BB, 2), NOTE(T_A, 6), NOTE(T_E, 4), NOTE(T_G, 4), NOTE(T_A, 6), 
+  NOTE(T_G, 4), NOTE(T_E, 7), END_MARKER
+};
+
+byte natal[] = {
+  NOTE(T_G, 4), NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), NOTE(T_G, 4), 
+  NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), NOTE(T_CX, 4), NOTE(T_CX, 1), 
+  NOTE(T_A, 5), NOTE(T_B, 4), NOTE(T_B, 1), NOTE(T_G, 5), NOTE(T_A, 4), 
+  NOTE(T_G, 1), NOTE(T_A, 3), NOTE(T_CX, 3), NOTE(T_B, 3), NOTE(T_A, 3), 
+  NOTE(T_G, 4), NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), END_MARKER
+};
+
+byte LTS[] = {
+  NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), 
+  NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), 
+  NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_C, 1), 
+  NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), 
+  NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), 
+  NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), 
+  NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_G, 1), 
+  NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_C, 1), NOTE(T_BB, 1), NOTE(T_G, 1), 
+  NOTE(T_BB, 1), NOTE(T_C, 1), NOTE(T_CS, 1), NOTE(T_C, 1), NOTE(T_BB, 1), 
+  NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_F, 1), 
+  NOTE(T_D, 1), NOTE(T_C, 1), NOTE(T_BB, 1), NOTE(T_D, 1), NOTE(T_C, 1), 
+  NOTE(T_BB, 1), NOTE(T_G, 1), END_MARKER
 };
 
 int durations[] = { 2, 4, 6, 8, 12, 16, 18, 24 };
@@ -54,13 +87,14 @@ void setup()
     pinMode(PIEZO, OUTPUT);
     delay(2000);
     play(mario);
-    //play_original();  // Somehow this works, but only when play_my_tune() is commented out
-    // play_my_tune(mario);  // This just does not work...
+    play(zelda);
+    play(smoke);
+    play(natal);
+    play(LTS);
 }
  
 void loop()
 {
-  //play_my_tune(play_dur, play_tune, sizeof(play_tune));
 }
 
 void play(byte *pByte)
@@ -175,19 +209,6 @@ void play(byte *pByte)
         ++pByte;
     }
 }
-
-// void play_original()
-// {
-//     int LEN = sizeof(mario_r) / sizeof(int);
-//     for (int i=0; i < LEN; i++)
-//     {
-//         int tom = mario_m[i];
-//         int tempo = mario_r[i];
-//         long tvalue = tempo * vel;
-//         tocar(tom, tvalue);
-//         delayMicroseconds(1000); //pause between notes
-//     }
-// }
  
 void tocar(int tom, long tempo_value)
 {
@@ -203,23 +224,3 @@ void tocar(int tom, long tempo_value)
         tempo_gasto += tom;
     }
 }
-
-
-
-/* 
-// Looks like zelda
-int zelda_m[] = {tone_G, tone_E, tone_D, tone_C, tone_D, tone_E, tone_G, tone_E, tone_D, tone_C, tone_D, tone_E, tone_D, tone_E,tone_G, tone_E, tone_G, tone_A, tone_E, tone_A, tone_G, tone_E, tone_D, tone_C};
-int zelda_r[] = {8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 16};
- 
-// Some electric guitar...
-int smoke_m[] = {tone_E, tone_G, tone_A, tone_E, tone_G, tone_Bb, tone_A, tone_E, tone_G, tone_A, tone_G, tone_E};
-int smoke_r[] = {12, 12, 18, 12, 12, 6, 18, 12, 12, 18, 12, 24};
- 
-// Start like something similar to le reine au nez rouge...
-int natal_m[] = {tone_G, tone_A, tone_G, tone_E, tone_G, tone_A, tone_G, tone_E, tone_c, tone_c, tone_A, tone_B, tone_B, tone_G, tone_A, tone_G, tone_A, tone_c, tone_B, tone_A, tone_G, tone_A, tone_G, tone_E};
-int natal_r[] = {12, 4, 8, 16, 12, 4, 8, 16, 12, 4, 16, 12, 4, 16, 12, 4, 8, 8, 8, 8, 12, 4, 8, 16};
- 
-// Seems like some electric guitar solo...
-int LTS_m[] = {tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_C, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_G, tone_Bb, tone_G, tone_F, tone_D, tone_F, tone_D, tone_G, tone_F, tone_D, tone_C, tone_Bb, tone_G, tone_Bb, tone_C, tone_C1, tone_C, tone_Bb, tone_F, tone_D, tone_Bb, tone_G, tone_F, tone_D, tone_C, tone_Bb, tone_D, tone_C, tone_Bb, tone_G} ;
-int LTS_r[] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
-*/
