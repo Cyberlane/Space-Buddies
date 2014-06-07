@@ -1,46 +1,14 @@
 /*
- * Space_Buddies.c
+ * Space_Buddies
  *
- * Created: 06/06/2014 22:56:55
+ *  Created: 06/06/2014 22:56:55
  *  Author: Justin Nel
  */ 
 
 
 #include <avr/io.h>
 #include <util/delay.h>
-
-#define NOTE(tone, dur) ((((((uint8_t)(dur)) & 0x07)<<5) | (((uint8_t)(tone)) & 0x1F)))
-#define GET_TONE(note) ((note) & 0x1F)
-#define GET_DURATION(note) (((note)>>5) & 0x07)
-#define END_MARKER 0XFF
-
-enum {
-	T_REST,
-	T_C,
-	T_CS,
-	T_D,
-	T_EB,
-	T_E,
-	T_F,
-	T_FS,
-	T_G,
-	T_AB,
-	T_A,
-	T_BB,
-	T_B,
-	T_CX,
-	T_CSX,
-	T_DX,
-	T_EBX,
-	T_EX,
-	T_FX,
-	T_FSX,
-	T_GX,
-	T_ABX,
-	T_AX,
-	T_BBX,
-	T_BX
-};
+#include "Space-Buddies.h"
 
 uint8_t mario[] = {
 	NOTE(T_EX, 2),  NOTE(T_EX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_EX, 4),  NOTE(T_GX, 7),
@@ -87,7 +55,6 @@ uint8_t LTS[] = {
 	NOTE(T_BB, 1), NOTE(T_G, 1), END_MARKER
 };
 
-//const int PIEZO = 6;
 long vel = 20000;
 
 int main(void)
@@ -216,7 +183,6 @@ void play(uint8_t *pByte)
 
 void delay_ms(uint16_t count)
 {
-	count = count * 2;
 	while(count--)
 	{
 		_delay_ms(1);
@@ -225,7 +191,6 @@ void delay_ms(uint16_t count)
 
 void delay_us(uint16_t count)
 {
-	count = count * 2;
 	while(count--)
 	{
 		_delay_us(1);
