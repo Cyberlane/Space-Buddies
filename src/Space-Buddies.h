@@ -9,6 +9,9 @@
 #define GET_TONE(note) ((note) & 0x1F)
 #define GET_DURATION(note) (((note)>>5) & 0x07)
 #define END_MARKER 0XFF
+#define READ_PIN(pin) ((PIND & (1 << pin)) >> pin)
+#define PINMODE_OUTPUT(pin) (DDRD |= (1 << pin))
+#define READ_BIT(byte, bit) ((byte & (1 << bit)) >> bit)
 
 enum {
 	T_REST,

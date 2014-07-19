@@ -7,65 +7,209 @@
 
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
+#include <stdbool.h>
 #include <util/delay.h>
 #include "Space-Buddies.h"
-
-uint8_t mario[] = {
-	NOTE(T_EX, 2),  NOTE(T_EX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_EX, 4),  NOTE(T_GX, 7),
-	NOTE(T_G, 7),   NOTE(T_CX, 6),  NOTE(T_G, 6),   NOTE(T_E, 6),   NOTE(T_A, 4),   NOTE(T_B, 4),
-	NOTE(T_BB, 2),  NOTE(T_A, 4),   NOTE(T_G, 3),   NOTE(T_EX, 3),  NOTE(T_GX, 3),  NOTE(T_AX, 4),
-	NOTE(T_FX, 2),  NOTE(T_GX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_DX, 2),  NOTE(T_B, 2),
-	NOTE(T_CX, 4),  END_MARKER
-};
-
-uint8_t zelda[] = {
-	NOTE(T_G, 3), NOTE(T_E, 3), NOTE(T_D, 3), NOTE(T_C, 3), NOTE(T_D, 3),
-	NOTE(T_E, 3), NOTE(T_G, 3), NOTE(T_E, 3), NOTE(T_D, 3), NOTE(T_C, 3),
-	NOTE(T_D, 1), NOTE(T_E, 1), NOTE(T_D, 1), NOTE(T_E, 1), NOTE(T_G, 3),
-	NOTE(T_E, 3), NOTE(T_G, 3), NOTE(T_A, 3), NOTE(T_E, 3), NOTE(T_A, 3),
-	NOTE(T_G, 3), NOTE(T_E, 3), NOTE(T_D, 3), NOTE(T_C, 5), END_MARKER
-};
-
-uint8_t smoke[] = {
-	NOTE(T_E, 4), NOTE(T_G, 4), NOTE(T_A, 6), NOTE(T_E, 4), NOTE(T_G, 4),
-	NOTE(T_BB, 2), NOTE(T_A, 6), NOTE(T_E, 4), NOTE(T_G, 4), NOTE(T_A, 6),
-	NOTE(T_G, 4), NOTE(T_E, 7), END_MARKER
-};
-
-uint8_t natal[] = {
-	NOTE(T_G, 4), NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), NOTE(T_G, 4),
-	NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), NOTE(T_CX, 4), NOTE(T_CX, 1),
-	NOTE(T_A, 5), NOTE(T_B, 4), NOTE(T_B, 1), NOTE(T_G, 5), NOTE(T_A, 4),
-	NOTE(T_G, 1), NOTE(T_A, 3), NOTE(T_CX, 3), NOTE(T_B, 3), NOTE(T_A, 3),
-	NOTE(T_G, 4), NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), END_MARKER
-};
-
-uint8_t LTS[] = {
-	NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1),
-	NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1),
-	NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_C, 1),
-	NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1),
-	NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1),
-	NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_G, 1), NOTE(T_BB, 1), NOTE(T_G, 1),
-	NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_G, 1),
-	NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_C, 1), NOTE(T_BB, 1), NOTE(T_G, 1),
-	NOTE(T_BB, 1), NOTE(T_C, 1), NOTE(T_CS, 1), NOTE(T_C, 1), NOTE(T_BB, 1),
-	NOTE(T_F, 1), NOTE(T_D, 1), NOTE(T_BB, 1), NOTE(T_G, 1), NOTE(T_F, 1),
-	NOTE(T_D, 1), NOTE(T_C, 1), NOTE(T_BB, 1), NOTE(T_D, 1), NOTE(T_C, 1),
-	NOTE(T_BB, 1), NOTE(T_G, 1), END_MARKER
-};
+#include "Space-Tunes.h"
 
 long vel = 20000;
 
+/*
+	State Summary:
+	0: check for data
+	1: read data
+	2: send data
+	3: play tune
+*/
+uint8_t state = 0;
+uint8_t check_count = 0;
+uint8_t counter = 0;
+uint8_t buffer[50];
+uint8_t currentBit = 0;
+uint8_t currentByte = 0;
+uint8_t crc = 0;
+bool last_set_high = false;
+
+//TODO: Need logic to set "current tune", toggled by button press
+//TODO: Move buffer into EEPROM when data is successful
+//TODO: Implement button interrupts to handle button events
+//TODO: Implement timer/counter to handle flashing LEDs when state==3
+//TODO: Before each send, blink the current tune's LED colour
+
 int main(void)
 {
-	DDRD = DDRD | 0b01000000; // Set pin 6 to OUTPUT
+	// Macro untested, left in case macro is wrong!
+	//DDRD |= 0b01000000; // Set pin 6 to OUTPUT
+	PINMODE_OUTPUT(6);
+	
 	delay_ms(2000);
-	play(mario);
+	
     while(1)
     {
-        //TODO:: Please write your application code 
+		switch(state)
+		{
+			case 1:
+				read_data();
+				break;
+			case 2:
+				send_data(mario);
+				break;
+			case 3:
+				play(mario);
+				break;
+			default:
+				check_data();
+				break;
+		}
     }
+}
+
+void check_data()
+{
+	check_count = 0;
+	while(1)
+	{
+		if (READ_PIN(6) == 1) {
+			if (check_count++ == 250) {
+				state = 1;
+				return;
+			}
+		} else {
+			state = 2;
+			return;
+		}
+	}
+}
+
+// Trigger this after receiving over 250 cycles of 38kHz from IR of HIGH
+void read_data()
+{
+	// high pin for 1-100 = 0
+	// high pin for 101-200 = 1
+	last_set_high = false;
+	crc = 0;
+	counter = 0;
+	while (1) // Should I have a value here to prevent infinite loop bugs?
+	{
+		if (READ_PIN(6) == 1) {
+			if (last_set_high) {
+				counter++;
+			} else {
+				last_set_high = true;
+				counter = 1;
+			}
+		} else {
+			if (last_set_high) {
+				if (counter >= 125 && counter <= 200) {
+					buffer[currentByte] = buffer[currentByte] | (1 << currentBit);
+					// we've received a 1, set that on the next bit in the current byte!
+				} else if (counter >= 25 && counter <= 100) {
+					// we've received a 0, no need to set it as the byte would be empty to begin!
+				} else {
+					// Bad data!
+					memset(buffer, 0, 50);
+					currentBit = 0;
+					currentByte = 0;
+					state = 0;
+					return;
+				}
+				if (currentBit == 7) {
+					crc = crc ^ buffer[currentByte];
+					if (currentByte == 49) {
+						// We're full!
+						if (crc != buffer[currentByte]) {
+							// CRC failed
+							memset(buffer, 0, 50);
+							currentBit = 0;
+							currentByte = 0;
+							state = 0;
+						} else {
+							buffer[currentByte] = END_MARKER;
+							state = 3;
+						}
+						return;
+					}
+					currentBit = 0;
+					buffer[currentByte++] = 0;
+				} else {
+					currentBit++;
+				}
+				last_set_high = false;
+				counter = 0;
+			} else {
+				if (counter >= 1000) {
+					// timeout
+					if (currentBit != 0 || crc != buffer[currentByte]) {
+						// Not a complete byte or CRC failed
+						memset(buffer, 0, 50);
+						currentBit = 0;
+						currentByte = 0;
+						state = 0;
+					} else {
+						buffer[currentByte] = END_MARKER;
+						state = 3;
+					}
+					return;
+				}
+				counter++;
+			}
+		}
+		delay_us(26);
+	}
+}
+
+void send_data(uint8_t *pByte)
+{
+	send_signal(250); // Would I need to send no signal before I begin?
+	while(*pByte != END_MARKER)
+	{
+		currentBit = 0;
+		while (currentBit < 8)
+		{
+			if (READ_BIT(*pByte, currentBit) == 1) {
+				send_signal(100);
+				} else {
+				send_signal(200);
+			}
+			no_signal(50);
+			currentBit++;
+		}
+		++pByte;
+	}
+}
+
+void no_signal(int cycles)
+{
+	delay_us(cycles * 26);
+}
+
+void send_signal(int cycles)
+{
+	while(cycles--)
+	{
+		//TODO: Extract these into macros
+		PORTD |= 0b00100000;
+		delay_us(6);
+		PORTD &= 0b11011111;
+		delay_us(20);
+	}
+}
+
+void delay_ms(uint16_t count)
+{
+	while(count--)
+	{
+		_delay_ms(1);
+	}
+}
+
+void delay_us(uint16_t count)
+{
+	while(count--)
+	{
+		_delay_us(1);
+	}
 }
 
 void play(uint8_t *pByte)
@@ -181,31 +325,15 @@ void play(uint8_t *pByte)
 	}
 }
 
-void delay_ms(uint16_t count)
-{
-	while(count--)
-	{
-		_delay_ms(1);
-	}
-}
-
-void delay_us(uint16_t count)
-{
-	while(count--)
-	{
-		_delay_us(1);
-	}
-}
-
 void tocar(int tom, long tempo_value)
 {
 	long tempo_gasto = 0;
 	while (tempo_gasto < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
-		PORTD = PORTD | 0b01000000; // Drive pin 6 to HIGH
+		PORTD |= 0b01000000; // Drive pin 6 to HIGH
 		delay_us(tom / 2);
 		
-		PORTD = PORTD & 0b10111111; // Drop pin 6 to LOW
+		PORTD &= 0b10111111; // Drop pin 6 to LOW
 		delay_us(tom / 2);
 		
 		tempo_gasto += tom;
