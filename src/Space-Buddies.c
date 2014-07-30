@@ -30,6 +30,7 @@ uint8_t currentBit = 0;
 uint8_t currentByte = 0;
 uint8_t crc = 0;
 bool last_set_high = false;
+volatile uint8_t overflow_counter = 0;
 
 //TODO: Need logic to set "current tune", toggled by button press
 //TODO: Move buffer into EEPROM when data is successful
@@ -41,28 +42,56 @@ int main(void)
 {
 	// Macro untested, left in case macro is wrong!
 	//DDRD |= 0b01000000; // Set pin 6 to OUTPUT
+	PINMODE_OUTPUT(5);
 	PINMODE_OUTPUT(6);
 	
+	timer_init();
 	delay_ms(2000);
+	play(mario);
 	
     while(1)
     {
-		switch(state)
-		{
-			case 1:
-				read_data();
-				break;
-			case 2:
-				send_data(mario);
-				break;
-			case 3:
-				play(mario);
-				break;
-			default:
-				check_data();
-				break;
-		}
+		//switch(state)
+		//{
+			//case 1:
+				//read_data();
+				//break;
+			//case 2:
+				//send_data(mario);
+				//break;
+			//case 3:
+				//play(mario);
+				//break;
+			//default:
+				//check_data();
+				//break;
+		//}
     }
+}
+
+void timer_init()
+{
+	// prescaler = 8
+	TCCR1B |= (1 << CS11);
+	// Init counter
+	TCNT1 = 0;
+	// enable overflow interrupt
+	TIMSK1 |= (1 << TOIE1);
+	// enable global interrupts
+	sei();
+}
+
+ISR(TIMER1_OVF_vect)
+{
+	overflow_counter++;
+	
+	if (overflow_counter >= 30)
+	{
+		TOGGLE_PIN(6);
+		overflow_counter = 0;
+	}
+	
+	//TODO: Add some logic here which eventually resets the overflow counter
 }
 
 void check_data()
@@ -169,7 +198,7 @@ void send_data(uint8_t *pByte)
 		{
 			if (READ_BIT(*pByte, currentBit) == 1) {
 				send_signal(100);
-				} else {
+			} else {
 				send_signal(200);
 			}
 			no_signal(50);
@@ -190,8 +219,10 @@ void send_signal(int cycles)
 	{
 		//TODO: Extract these into macros
 		PORTD |= 0b00100000;
+		//PIN_HIGH(5);
 		delay_us(6);
 		PORTD &= 0b11011111;
+		//PIN_LOW(5);
 		delay_us(20);
 	}
 }
@@ -330,10 +361,10 @@ void tocar(int tom, long tempo_value)
 	long tempo_gasto = 0;
 	while (tempo_gasto < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
-		PORTD |= 0b01000000; // Drive pin 6 to HIGH
+		PIN_HIGH(5);
 		delay_us(tom / 2);
 		
-		PORTD &= 0b10111111; // Drop pin 6 to LOW
+		PIN_LOW(5);
 		delay_us(tom / 2);
 		
 		tempo_gasto += tom;

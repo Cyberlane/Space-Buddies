@@ -12,6 +12,9 @@
 #define READ_PIN(pin) ((PIND & (1 << pin)) >> pin)
 #define PINMODE_OUTPUT(pin) (DDRD |= (1 << pin))
 #define READ_BIT(byte, bit) ((byte & (1 << bit)) >> bit)
+#define TOGGLE_PIN(pin) (PORTD ^= (1 << pin))
+#define PIN_HIGH(pin) (PORTD |= (1 << pin))
+#define PIN_LOW(pin) (PORTD &= (255 ^ (1 << pin)))
 
 enum {
 	T_REST,
