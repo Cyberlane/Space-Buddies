@@ -13,7 +13,13 @@
 #include "Space-Buddies.h"
 #include "Space-Tunes.h"
 
+
+#define MAXPULSE 65000
+
 long vel = 20000;
+uint16_t pulses[400];
+uint8_t currentPulse = 0;
+uint16_t highpulse = 0, lowpulse = 0;
 
 /*
 	State Summary:
@@ -40,190 +46,157 @@ volatile uint8_t overflow_counter = 0;
 
 int main(void)
 {
-	// Macro untested, left in case macro is wrong!
-	//DDRD |= 0b01000000; // Set pin 6 to OUTPUT
-	PINMODE_OUTPUT(5);
-	PINMODE_OUTPUT(6);
+	// Set RGB LEDs as output
+	DDRD |= (1 << PD0);
+	DDRD |= (1 << PD1);
+	DDRD |= (1 << PD2);
+	DDRB |= (1 << PB0);
+	DDRB |= (1 << PB1);
+	DDRB |= (1 << PB2);
+	// Set buttons as input
+	DDRD &= ~(1 << PD3);
+	DDRD &= ~(1 << PD7);
+	// Set speaker as output
+	DDRD |= (1 << PD5);
+	// Set IR Transmitter as output
+	DDRD |= (1 << PD6);
+	// Set IR Receiver as input
+	DDRC &= ~(1 << PC5);
+	// Set internal pull-up for IR Receiver
+	PORTC |= (1 << PC5);
 	
-	timer_init();
-	delay_ms(2000);
-	play(mario);
+	_delay_ms(100);
 	
     while(1)
     {
-		//switch(state)
-		//{
-			//case 1:
-				//read_data();
-				//break;
-			//case 2:
-				//send_data(mario);
-				//break;
-			//case 3:
-				//play(mario);
-				//break;
-			//default:
-				//check_data();
-				//break;
-		//}
+		switch(state)
+		{
+			case 3:
+			play(buffer);
+			break;
+			case 2:
+			send_data(mario);
+			break;
+			default:
+			case 1:
+			read_ir_data();
+			break;
+		}
     }
 }
 
-void timer_init()
+void read_ir_data()
 {
-	// prescaler = 8
-	TCCR1B |= (1 << CS11);
-	// Init counter
-	TCNT1 = 0;
-	// enable overflow interrupt
-	TIMSK1 |= (1 << TOIE1);
-	// enable global interrupts
-	sei();
-}
-
-ISR(TIMER1_OVF_vect)
-{
-	overflow_counter++;
-	
-	if (overflow_counter >= 30)
-	{
-		TOGGLE_PIN(6);
-		overflow_counter = 0;
-	}
-	
-	//TODO: Add some logic here which eventually resets the overflow counter
-}
-
-void check_data()
-{
-	check_count = 0;
 	while(1)
 	{
-		if (READ_PIN(6) == 1) {
-			if (check_count++ == 250) {
-				state = 1;
+		// Start out with no pulse length
+		highpulse = lowpulse = 0;
+		
+		// While pin is high
+		while(DDRC & (1 << PC6))
+		{
+			highpulse++;
+			_delay_us(26);
+			
+			/*
+			If the pulse is too long, we have timed out
+			Either nothing was received or the code is finished
+			Process what we've grabbed so far and then reset
+			*/
+			if ((highpulse >= MAXPULSE) && (currentPulse != 0))
+			{
+				processData();
+				currentPulse = 0;
 				return;
 			}
+		}
+		
+		// While pin is low
+		while(!(DDRC & _BV(PC6)))
+		{
+			lowpulse++;
+			_delay_us(26);
+			if ((lowpulse >= MAXPULSE) && (currentPulse != 0))
+			{
+				processData();
+				currentPulse = 0;
+				return;
+			}
+		}
+		
+		pulses[currentPulse] = lowpulse;
+		
+		// We've read one high, one low, now let's do another
+		currentPulse++;
+	}
+}
+
+void processData()
+{
+	// we only want full bytes, which requires 8 bits
+	if ((currentPulse+1)%8 != 0)
+	{
+		// this is bad data, escape!
+		state = 2;
+		return;
+	}
+	
+	currentBit = 0;
+	currentByte = 0;
+	
+	for (uint8_t i = 0; i < currentPulse; i++)
+	{
+		if (pulses[i] >= 900 || pulses[i] <= 1500)
+		{
+			// this is a 1
+			buffer[currentByte] = buffer[currentByte] | (1 << currentBit);
+		} else if (pulses[i] >= 400 || pulses[i] <= 750)
+		{
+			// this is a 0
 		} else {
+			// bad data, escape!
+			memset(buffer, 0, 50);
 			state = 2;
 			return;
 		}
-	}
-}
-
-// Trigger this after receiving over 250 cycles of 38kHz from IR of HIGH
-void read_data()
-{
-	// high pin for 1-100 = 0
-	// high pin for 101-200 = 1
-	last_set_high = false;
-	crc = 0;
-	counter = 0;
-	while (1) // Should I have a value here to prevent infinite loop bugs?
-	{
-		if (READ_PIN(6) == 1) {
-			if (last_set_high) {
-				counter++;
-			} else {
-				last_set_high = true;
-				counter = 1;
-			}
-		} else {
-			if (last_set_high) {
-				if (counter >= 125 && counter <= 200) {
-					buffer[currentByte] = buffer[currentByte] | (1 << currentBit);
-					// we've received a 1, set that on the next bit in the current byte!
-				} else if (counter >= 25 && counter <= 100) {
-					// we've received a 0, no need to set it as the byte would be empty to begin!
-				} else {
-					// Bad data!
-					memset(buffer, 0, 50);
-					currentBit = 0;
-					currentByte = 0;
-					state = 0;
-					return;
-				}
-				if (currentBit == 7) {
-					crc = crc ^ buffer[currentByte];
-					if (currentByte == 49) {
-						// We're full!
-						if (crc != buffer[currentByte]) {
-							// CRC failed
-							memset(buffer, 0, 50);
-							currentBit = 0;
-							currentByte = 0;
-							state = 0;
-						} else {
-							buffer[currentByte] = END_MARKER;
-							state = 3;
-						}
-						return;
-					}
-					currentBit = 0;
-					buffer[currentByte++] = 0;
-				} else {
-					currentBit++;
-				}
-				last_set_high = false;
-				counter = 0;
-			} else {
-				if (counter >= 1000) {
-					// timeout
-					if (currentBit != 0 || crc != buffer[currentByte]) {
-						// Not a complete byte or CRC failed
-						memset(buffer, 0, 50);
-						currentBit = 0;
-						currentByte = 0;
-						state = 0;
-					} else {
-						buffer[currentByte] = END_MARKER;
-						state = 3;
-					}
-					return;
-				}
-				counter++;
-			}
+		if (++currentBit == 8)
+		{
+			currentBit = 0;
+			currentByte++;
 		}
-		delay_us(26);
 	}
+	buffer[currentByte] = END_MARKER;
+	state = 3;
 }
 
 void send_data(uint8_t *pByte)
 {
-	send_signal(250); // Would I need to send no signal before I begin?
 	while(*pByte != END_MARKER)
 	{
 		currentBit = 0;
 		while (currentBit < 8)
 		{
 			if (READ_BIT(*pByte, currentBit) == 1) {
-				send_signal(100);
+				sendIR(1000);
 			} else {
-				send_signal(200);
+				sendIR(500);
 			}
-			no_signal(50);
+			_delay_us(500);
 			currentBit++;
 		}
 		++pByte;
 	}
 }
 
-void no_signal(int cycles)
-{
-	delay_us(cycles * 26);
-}
-
-void send_signal(int cycles)
+void sendIR(int cycles)
 {
 	while(cycles--)
 	{
 		//TODO: Extract these into macros
-		PORTD |= 0b00100000;
-		//PIN_HIGH(5);
-		delay_us(6);
-		PORTD &= 0b11011111;
-		//PIN_LOW(5);
-		delay_us(20);
+		PORTD |= (1 << PD6);
+		_delay_us(10);
+		PORTD &= ~(1 << PD6);
+		_delay_us(10);
 	}
 }
 
@@ -245,7 +218,6 @@ void delay_us(uint16_t count)
 
 void play(uint8_t *pByte)
 {
-	int counter = 1703;
 	while(*pByte != END_MARKER)
 	{
 		int tone = 0;
@@ -351,22 +323,22 @@ void play(uint8_t *pByte)
 			break;
 		}
 		long tvalue = duration * vel;
-		tocar(tone, tvalue);
+		play_tone(tone, tvalue);
 		++pByte;
 	}
 }
 
-void tocar(int tom, long tempo_value)
+void play_tone(int tone, long tempo_value)
 {
 	long tempo_gasto = 0;
 	while (tempo_gasto < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
-		PIN_HIGH(5);
-		delay_us(tom / 2);
+		PORTD |= (1 << PD5);
+		delay_us(tone / 2);
 		
-		PIN_LOW(5);
-		delay_us(tom / 2);
+		PORTD &= ~(1 << PD5);
+		delay_us(tone / 2);
 		
-		tempo_gasto += tom;
+		tempo_gasto += tone;
 	}
 }
