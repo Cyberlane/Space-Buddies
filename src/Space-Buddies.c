@@ -26,6 +26,8 @@
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 #define FRACT_MAX (1000 >> 3)
 
+#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= (1 << bit))
+
 volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
 static unsigned char timer0_fract = 0;
@@ -204,31 +206,33 @@ int main(void)
 	
     while(1)
     {
-		switch(state)
-		{
-			case 3:
-			play(buffer);
-			break;
-			case 2:
-			send_data(mario);
-			break;
-			default:
-			case 1:
-			read_ir_data();
-			break;
-		}
+		checkleftButton();
+		checkRightButton();
+		//switch(state)
+		//{
+			//case 3:
+			//play(buffer);
+			//break;
+			//case 2:
+			//send_data(mario);
+			//break;
+			//default:
+			//case 1:
+			//read_ir_data();
+			//break;
+		//}
     }
 }
 
 
 void rightButtonPressed()
 {
-	//TODO
+	PORTD ^= (1 << PD0);
 }
 
 void leftButtonPressed()
 {
-	//TODO
+	PORTB ^= (1 << PB0);
 }
 
 // Button Config only
