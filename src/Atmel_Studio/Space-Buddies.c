@@ -223,12 +223,12 @@ int main(void)
 
 void rightButtonPressed()
 {
-	//TODO
+	PORTD ^= (1 << PD0);
 }
 
 void leftButtonPressed()
 {
-	//TODO
+	PORTB ^= (1 << PB0);
 }
 
 // Button Config only

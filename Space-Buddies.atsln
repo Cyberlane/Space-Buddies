@@ -1,7 +1,7 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Atmel Studio Solution File, Format Version 11.00
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Space-Buddies", "src\Space-Buddies.cproj", "{0ABE5B4A-7F2C-41B8-9060-0F8A6A881C0E}"
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "Space-Buddies", "src\Atmel_Studio\Space-Buddies.cproj", "{0ABE5B4A-7F2C-41B8-9060-0F8A6A881C0E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
