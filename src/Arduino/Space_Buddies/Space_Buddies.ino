@@ -178,26 +178,35 @@ uint8_t rightButtonReadingAvgIndex = 0;
 
 
 void setup() {
-	// Set RGB LEDs as output
-	DDRD |= (1 << PD0);
-	DDRD |= (1 << PD1);
-	DDRD |= (1 << PD2);
-	DDRB |= (1 << PB0);
-	DDRB |= (1 << PB1);
-	DDRB |= (1 << PB2);
-	// Set buttons as input
-	DDRD &= ~(1 << PD3);
-	DDRD &= ~(1 << PD7);
-	// Set speaker as output
-	DDRD |= (1 << PD5);
-	// Set IR Transmitter as output
-	DDRD |= (1 << PD6);
-	// Set IR Receiver as input
-	DDRC &= ~(1 << PC5);
-	// Set internal pull-up for IR Receiver
-	PORTC |= (1 << PC5);
+  // Set RGB LEDs as output
+  DDRD |= (1 << PD0);
+  DDRD |= (1 << PD1);
+  DDRD |= (1 << PD2);
+  DDRB |= (1 << PB0);
+  DDRB |= (1 << PB1);
+  DDRB |= (1 << PB2);
+  // Set buttons as input
+  DDRD &= ~(1 << PD3);
+  DDRD &= ~(1 << PD7);
+  // Set speaker as output
+  DDRD |= (1 << PD5);
+  // Set IR Transmitter as output
+  DDRD |= (1 << PD6);
+  // Set IR Receiver as input
+  DDRC &= ~(1 << PC5);
+  // Set internal pull-up for IR Receiver
+  PORTC |= (1 << PC5);
 	
-	delayMicroseconds(100);
+  delayMicroseconds(100);
+  
+  for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
+    leftButtonReadings[i] = 0;
+    rightButtonReadings[i];
+  }
+  for (int i = 0; i < BUTTON_NUM_AVGS; i++) {
+    leftButtonReadingAvg[i] = 0;
+    rightButtonReadingAvg[i] = 0;
+  }
 }
 
 void loop() {
@@ -221,12 +230,12 @@ void loop() {
 
 void rightButtonPressed()
 {
-	PORTD ^= (1 << PD0);
+  PORTD ^= (1 << PD0);
 }
 
 void leftButtonPressed()
 {
-	PORTB ^= (1 << PB0);
+  PORTB ^= (1 << PB0);
 }
 
 void checkLeftButton()
@@ -255,7 +264,7 @@ void checkLeftButton()
 void getleftButtonReading()
 {
 	leftButtonTotal -= leftButtonReadings[leftButtonReadingIndex];
-	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(PD7);
+	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(7);
 	leftButtonTotal += leftButtonReadings[leftButtonReadingIndex];
 	leftButtonReadingIndex++;
 	if (leftButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -267,7 +276,7 @@ void getleftButtonReading()
 	leftButtonReadingAvgIndex++;
 	if (leftButtonReadingAvgIndex >= BUTTON_NUM_AVGS)
 	{
-		leftButtonReadingAvgIndex++;
+		leftButtonReadingAvgIndex = 0;
 	}
 	leftButtonAvgTouchValOld = leftButtonReadingAvg[leftButtonReadingAvgIndex];
 }
@@ -298,7 +307,7 @@ void checkRightButton()
 void getRightButtonReading()
 {
 	rightButtonTotal -= rightButtonReadings[rightButtonReadingIndex];
-	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(PD7);
+	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(3);
 	rightButtonTotal += rightButtonReadings[rightButtonReadingIndex];
 	rightButtonReadingIndex++;
 	if (rightButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -310,7 +319,7 @@ void getRightButtonReading()
 	rightButtonReadingAvgIndex++;
 	if (rightButtonReadingAvgIndex >= BUTTON_NUM_AVGS)
 	{
-		rightButtonReadingAvgIndex++;
+		rightButtonReadingAvgIndex = 0;
 	}
 	rightButtonAvgTouchValOld = rightButtonReadingAvg[rightButtonReadingAvgIndex];
 }
