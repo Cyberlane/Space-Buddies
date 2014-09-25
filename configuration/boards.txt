@@ -1,0 +1,28 @@
+beeper.name=Space Buddies (ATMega8)
+ 
+beeper.upload.tool=avrdude
+beeper.upload.protocol=arduino
+beeper.upload.speed=19200
+ 
+beeper.bootloader.tool=avrdude
+beeper.bootloader.unlock_bits=0x3F
+beeper.bootloader.lock_bits=0x0F
+ 
+beeper.build.mcu=atmega8
+beeper.build.f_cpu=8000000L
+beeper.build.board=SPACE_BUDDIES_MEGA8
+beeper.build.core=arduino
+beeper.build.variant=standard
+ 
+## Space Buddies w/ ATmega8
+## ------------------------------
+beeper.menu.cpu.atmega8=atmega8
+ 
+beeper.menu.cpu.atmega8.upload.maximum_size=7168
+beeper.menu.cpu.atmega8.upload.maximum_data_size=1024
+ 
+beeper.menu.cpu.atmega8.bootloader.low_fuses=0xdf
+beeper.menu.cpu.atmega8.bootloader.high_fuses=0xca
+beeper.menu.cpu.atmega8.bootloader.file=atmega8/ATmegaBOOT-prod-firmware-2009-11-07.hex
+ 
+beeper.menu.cpu.atmega8.build.mcu=atmega8
