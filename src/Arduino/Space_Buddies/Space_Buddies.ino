@@ -151,6 +151,7 @@ uint8_t buffer[50];
 // Button config
 #define BUTTON_NUM_READINGS 5
 #define BUTTON_NUM_AVGS (BUTTON_NUM_READINGS + 1)
+unsigned long buttonIdleTimer = 0;
 // Left button
 unsigned long leftButtonDebounce = 0;
 unsigned long leftButtonTime = 0;
@@ -240,6 +241,8 @@ void leftButtonPressed()
 
 void checkLeftButton()
 {
+  buttonIdleTimer = millis();
+  while(1) {
 	if (millis() - leftButtonTime > leftButtonDebounce)
 	{
 		getleftButtonReading();
@@ -259,6 +262,11 @@ void checkLeftButton()
 		}
 		leftButtonPinTouchedOld = leftButtonPinTouched;
 	}
+  if ((millis() - buttonIdleTimer > 2000) && (millis() - leftButtonTime > 2000))
+  {
+    return;
+  }
+  }
 }
 
 void getleftButtonReading()
@@ -283,6 +291,8 @@ void getleftButtonReading()
 
 void checkRightButton()
 {
+  buttonIdleTimer = millis();
+  while(1) {
 	if (millis() - rightButtonTime > rightButtonDebounce)
 	{
 		getRightButtonReading();
@@ -302,6 +312,11 @@ void checkRightButton()
 		}
 		rightButtonPinTouchedOld = rightButtonPinTouched;
 	}
+  if ((millis() - buttonIdleTimer > 2000) && (millis() - rightButtonTime > 2000))
+  {
+    return;
+  }
+  }
 }
 
 void getRightButtonReading()
@@ -377,11 +392,13 @@ void read_ir_data()
 			Either nothing was received or the code is finished
 			Process what we've grabbed so far and then reset
 			*/
-			if ((highpulse >= MAXPULSE) && (currentPulse != 0))
+			if (highpulse >= MAXPULSE)
 			{
+                            if (currentPulse != 0) {
 				processData();
 				currentPulse = 0;
-				return;
+                            }
+			    return;
 			}
 		}
 		
@@ -390,10 +407,12 @@ void read_ir_data()
 		{
 			lowpulse++;
 			delayMicroseconds(20);
-			if ((lowpulse >= MAXPULSE) && (currentPulse != 0))
+			if (lowpulse >= MAXPULSE)
 			{
+                            if (currentPulse != 0) {
 				processData();
 				currentPulse = 0;
+                            }
 				return;
 			}
 		}
