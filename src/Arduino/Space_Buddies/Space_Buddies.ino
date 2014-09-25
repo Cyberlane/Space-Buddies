@@ -272,7 +272,7 @@ void checkLeftButton()
 void getleftButtonReading()
 {
 	leftButtonTotal -= leftButtonReadings[leftButtonReadingIndex];
-	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(7);
+	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(3);
 	leftButtonTotal += leftButtonReadings[leftButtonReadingIndex];
 	leftButtonReadingIndex++;
 	if (leftButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -322,7 +322,7 @@ void checkRightButton()
 void getRightButtonReading()
 {
 	rightButtonTotal -= rightButtonReadings[rightButtonReadingIndex];
-	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(3);
+	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(7);
 	rightButtonTotal += rightButtonReadings[rightButtonReadingIndex];
 	rightButtonReadingIndex++;
 	if (rightButtonReadingIndex >= BUTTON_NUM_READINGS)
