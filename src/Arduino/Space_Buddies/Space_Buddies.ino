@@ -179,70 +179,81 @@ uint8_t rightButtonReadingAvgIndex = 0;
 
 
 void setup() {
-  // Set RGB LEDs as output
-  DDRD |= (1 << PD0);
-  DDRD |= (1 << PD1);
-  DDRD |= (1 << PD2);
-  DDRB |= (1 << PB0);
-  DDRB |= (1 << PB1);
-  DDRB |= (1 << PB2);
-  // Set buttons as input
-  DDRD &= ~(1 << PD3);
-  DDRD &= ~(1 << PD7);
-  // Set speaker as output
-  DDRD |= (1 << PD5);
-  // Set IR Transmitter as output
-  DDRD |= (1 << PD6);
-  // Set IR Receiver as input
-  DDRC &= ~(1 << PC5);
-  // Set internal pull-up for IR Receiver
-  PORTC |= (1 << PC5);
-	
-  delayMicroseconds(100);
-  
-  for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
-    leftButtonReadings[i] = 0;
-    rightButtonReadings[i];
-  }
-  for (int i = 0; i < BUTTON_NUM_AVGS; i++) {
-    leftButtonReadingAvg[i] = 0;
-    rightButtonReadingAvg[i] = 0;
-  }
+    // Set RGB LEDs as output
+    DDRD |= (1 << PD0);
+    DDRD |= (1 << PD1);
+    DDRD |= (1 << PD2);
+    DDRB |= (1 << PB0);
+    DDRB |= (1 << PB1);
+    DDRB |= (1 << PB2);
+    // Set buttons as input
+    DDRD &= ~(1 << PD3);
+    DDRD &= ~(1 << PD7);
+    // Set speaker as output
+    DDRD |= (1 << PD5);
+    // Set IR Transmitter as output
+    DDRD |= (1 << PD6);
+    // Set IR Receiver as input
+    DDRC &= ~(1 << PC5);
+    // Set internal pull-up for IR Receiver
+    PORTC |= (1 << PC5);
+
+    delayMicroseconds(100);
+
+    for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
+        leftButtonReadings[i] = 0;
+        rightButtonReadings[i];
+    }
+    for (int i = 0; i < BUTTON_NUM_AVGS; i++) {
+        leftButtonReadingAvg[i] = 0;
+        rightButtonReadingAvg[i] = 0;
+    }
 }
 
 void loop() {
-  switch(state) {
-    case 0:
-    read_ir_data();
-    break;
-    case 1:
-    send_data(mario);
-    break;
-    case 2:
-    play(buffer);
-    break;
-    default:
-    state = 0;
-    break;
-  }
-  checkLeftButton();
-  checkRightButton();
+    switch(state) {
+        case 0:
+        read_ir_data();
+        break;
+        case 1:
+        send_data(mario);
+        break;
+        case 2:
+        play(buffer);
+        break;
+        default:
+        state = 0;
+        break;
+    }
+    checkButtons();
 }
 
 void rightButtonPressed()
 {
-  PORTD ^= (1 << PD0);
+    PORTD ^= (1 << PD0);
+    buttonIdleTimer = millis();
 }
 
 void leftButtonPressed()
 {
-  PORTB ^= (1 << PB0);
+    PORTB ^= (1 << PB0);
+    buttonIdleTimer = millis();
+}
+
+void checkButtons()
+{
+    buttonIdleTimer = millis();
+    while(1) {
+        checkLeftButton();
+        checkRightButton();
+        if (millis() - buttonIdleTimer > 2000) {
+            return;
+        }
+    }
 }
 
 void checkLeftButton()
 {
-  buttonIdleTimer = millis();
-  while(1) {
 	if (millis() - leftButtonTime > leftButtonDebounce)
 	{
 		getleftButtonReading();
@@ -262,11 +273,6 @@ void checkLeftButton()
 		}
 		leftButtonPinTouchedOld = leftButtonPinTouched;
 	}
-  if ((millis() - buttonIdleTimer > 2000) && (millis() - leftButtonTime > 2000))
-  {
-    return;
-  }
-  }
 }
 
 void getleftButtonReading()
@@ -291,8 +297,6 @@ void getleftButtonReading()
 
 void checkRightButton()
 {
-  buttonIdleTimer = millis();
-  while(1) {
 	if (millis() - rightButtonTime > rightButtonDebounce)
 	{
 		getRightButtonReading();
@@ -312,11 +316,6 @@ void checkRightButton()
 		}
 		rightButtonPinTouchedOld = rightButtonPinTouched;
 	}
-  if ((millis() - buttonIdleTimer > 2000) && (millis() - rightButtonTime > 2000))
-  {
-    return;
-  }
-  }
 }
 
 void getRightButtonReading()
