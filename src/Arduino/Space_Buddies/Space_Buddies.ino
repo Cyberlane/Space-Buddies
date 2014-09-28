@@ -222,14 +222,14 @@ void setup() {
 void loop() {
     switch(state) {
         case 0:
-            PORTD |= (1 << PD2);
+            //PORTD |= (1 << PD2);
             checkButtons();
-            PORTD &= ~(1 << PD2);
+            //PORTD &= ~(1 << PD2);
         break;
         case 1:
-            PORTD |= (1 << PD1);
+            //PORTD |= (1 << PD1);
             read_ir_data();
-            PORTD &= ~(1 << PD1);
+            //PORTD &= ~(1 << PD1);
         break;
         case 2:
             PORTB |= (1 << PB1);
@@ -240,16 +240,22 @@ void loop() {
             save_buffer();
         break;
         case 4:
-            play(buffer);
-            send_ir_data();
+            move_selected_to_buffer();
+            //play(buffer);
+            send_data(buffer);
         break;
         case 5:
-            play(mario);
+            play(buffer);
+            state = 0;
         break;
         default:
             state = 0;
         break;
     }
+}
+
+void move_selected_to_buffer()
+{
 }
 
 void save_buffer()
@@ -269,7 +275,7 @@ void rightButtonPressed()
 {
     PORTD ^= (1 << PD0);
     
-    state = 4; // Play selected tune and send over IR
+    //state = 4; // Play selected tune and send over IR
 }
 
 void leftButtonPressed()
@@ -282,7 +288,7 @@ void checkButtons()
 {
     checkLeftButton();
     checkRightButton();
-    if (!(DDRC & (1 << PC5))) {
+    if (!(PINC & _BV(5))) {
         // If we see any incoming IR, escape button check mode
         state = 1;
     }
@@ -408,6 +414,34 @@ void send_data(uint8_t *pByte)
 	}
 }
 
+void show_error(uint8_t code, uint8_t subCode)
+{
+  while(code--)
+  {
+    PORTD |= (1 << PD2);
+    delay(250);
+    PORTD &= ~(1 << PD2);
+    delay(250);
+  }
+  delay(500);
+  uint8_t bigger = subCode / 10;
+  uint8_t lesser = subCode % 10;
+  while(bigger--)
+  {
+    PORTD |= (1 << PD0);
+    delay(250);
+    PORTD &= ~(1 << PD0);
+    delay(250);
+  }
+  while (lesser--)
+  {
+    PORTD |= (1 << PD1);
+    delay(250);
+    PORTD &= ~(1 << PD1);
+    delay(250);
+  }
+}
+
 void read_ir_data()
 {
     currentBit = currentByte = 0;
@@ -418,7 +452,7 @@ void read_ir_data()
 		highpulse = lowpulse = 0;
 		
 		// While pin is high
-		while(DDRC & (1 << PC5))
+		while(PINC & (1 << 5))
 		{
 			highpulse++;
 			delayMicroseconds(20);
@@ -430,40 +464,40 @@ void read_ir_data()
 			*/
 			if (highpulse >= MAXPULSE)
 			{
-                if (currentPulse != 0) {
-                    //processData();
-                    if ((currentPulse+1)%8 != 0) {
-                        //bad data, escape!
-                        state = 0; // check for buttons
-                    } else {
-                        buffer[currentByte] = END_MARKER;
-                        state = 3; // save buffer to eeprom
-                    }
-                    currentPulse = 0;
-                }
+                            if (currentPulse != 0) {
+                                if (currentBit != 0) {
+                                    //bad data, escape!
+                                    show_error(1, currentByte);
+                                    state = 0; // check for buttons
+                                } else {
+                                    buffer[currentByte] = END_MARKER;
+                                    state = 3; // save buffer to eeprom
+                                }
+                                currentPulse = 0;
+                            }
 			    return;
 			}
 		}
 		
 		// While pin is low
-		while(!(DDRC & (1 << PC5)))
+		while(!(PINC & _BV(5)))
 		{
 			lowpulse++;
 			delayMicroseconds(20);
 			if (lowpulse >= MAXPULSE)
 			{
-                if (currentPulse != 0) {
-                    //processData();
-                    if ((currentPulse+1)%8 != 0) {
-                        //bad data, escape!
-                        state = 0; // check for buttons
-                    } else {
-                        buffer[currentByte] = END_MARKER;
-                        state = 3; // save buffer to eeprom
-                    }
-                    currentPulse = 0;
-                }
-				return;
+                            if (currentPulse != 0) {
+                                if (currentBit != 0) {
+                                    //bad data, escape!
+                                    show_error(2, currentBit);
+                                    state = 0; // check for buttons
+                                } else {
+                                    buffer[currentByte] = END_MARKER;
+                                    state = 3; // save buffer to eeprom
+                                }
+                                currentPulse = 0;
+                            }
+			    return;
 			}
 		}
 
@@ -480,9 +514,13 @@ void read_ir_data()
         else
         {
             // bad data, escape!
-            memset(buffer, 0, 50);
-            state = 2;
-            return;
+            if (currentBit == 0) {
+                //TODO: Add a CRC validator here
+            } else {
+                state = 0;
+                show_error(3, currentBit);
+                return;
+            }
         }
         
         if (++currentBit == 8)
