@@ -13,151 +13,10 @@
 #include "Space-Buddies.h"
 #include "Space-Tunes.h"
 
-#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
-#define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
-// the prescaler is set so that timer0 ticks every 64 clock cycles, and the
-// the overflow handler is called every 256 ticks.
-#define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
-// the whole number of milliseconds per timer0 overflow
-#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-// the fractional number of milliseconds per timer0 overflow. we shift right
-// by three to fit these numbers into a byte. (for the clock speeds we care
-// about - 8 and 16 MHz - this doesn't lose precision.)
-#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
-#define FRACT_MAX (1000 >> 3)
-
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= (1 << bit))
-
-volatile unsigned long timer0_overflow_count = 0;
-volatile unsigned long timer0_millis = 0;
-static unsigned char timer0_fract = 0;
-
-SIGNAL(TIMER0_OVF_vect)
-{
-	// copy these to local variables so they can be stored in registers
-	// (volatile variables must be read from memory on every access)
-	unsigned long m = timer0_millis;
-	unsigned char f = timer0_fract;
-
-	m += MILLIS_INC;
-	f += FRACT_INC;
-	if (f >= FRACT_MAX) {
-		f -= FRACT_MAX;
-		m += 1;
-	}
-
-	timer0_fract = f;
-	timer0_millis = m;
-	timer0_overflow_count++;
-}
-
-unsigned long millis()
-{
-	unsigned long m;
-	uint8_t oldSREG = SREG;
-
-	// disable interrupts while we read timer0_millis or we might get an
-	// inconsistent value (e.g. in the middle of a write to timer0_millis)
-	cli();
-	m = timer0_millis;
-	SREG = oldSREG;
-
-	return m;
-}
-
-void init()
-{
-	// this needs to be called before setup() or some functions won't
-	// work there
-	sei();
-	
-	// on the ATmega168, timer 0 is also used for fast hardware pwm
-	// (using phase-correct PWM would mean that timer 0 overflowed half as often
-	// resulting in different millis() behavior on the ATmega8 and ATmega168)
-	//#if !defined(__AVR_ATmega8__)
-	//sbi(TCCR0A, WGM01);
-	//sbi(TCCR0A, WGM00);
-	//#endif
-	// set timer 0 prescale factor to 64
-	#if defined(__AVR_ATmega8__)
-	sbi(TCCR0, CS01);
-	sbi(TCCR0, CS00);
-	//#else
-	//sbi(TCCR0B, CS01);
-	//sbi(TCCR0B, CS00);
-	#endif
-	// enable timer 0 overflow interrupt
-	#if defined(__AVR_ATmega8__)
-	sbi(TIMSK, TOIE0);
-	//#else
-	//sbi(TIMSK0, TOIE0);
-	#endif
-
-	// timers 1 and 2 are used for phase-correct hardware pwm
-	// this is better for motors as it ensures an even waveform
-	// note, however, that fast pwm mode can achieve a frequency of up
-	// 8 MHz (with a 16 MHz clock) at 50% duty cycle
-	
-	TCCR1B = 0;
-
-	// set timer 1 prescale factor to 64
-	sbi(TCCR1B, CS11);
-	sbi(TCCR1B, CS10);
-	// put timer 1 in 8-bit phase correct pwm mode
-	sbi(TCCR1A, WGM10);
-
-	// set timer 2 prescale factor to 64
-	#if defined(__AVR_ATmega8__)
-	sbi(TCCR2, CS22);
-	//#else
-	//sbi(TCCR2B, CS22);
-	#endif
-	// configure timer 2 for phase correct pwm (8-bit)
-	#if defined(__AVR_ATmega8__)
-	sbi(TCCR2, WGM20);
-	//#else
-	//sbi(TCCR2A, WGM20);
-	#endif
-
-	#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-	// set timer 3, 4, 5 prescale factor to 64
-	sbi(TCCR3B, CS31);   sbi(TCCR3B, CS30);
-	sbi(TCCR4B, CS41);   sbi(TCCR4B, CS40);
-	sbi(TCCR5B, CS51);   sbi(TCCR5B, CS50);
-	// put timer 3, 4, 5 in 8-bit phase correct pwm mode
-	sbi(TCCR3A, WGM30);
-	sbi(TCCR4A, WGM40);
-	sbi(TCCR5A, WGM50);
-	#endif
-
-	// set a2d prescale factor to 128
-	// 16 MHz / 128 = 125 KHz, inside the desired 50-200 KHz range.
-	// XXX: this will not work properly for other clock speeds, and
-	// this code should use F_CPU to determine the prescale factor.
-	sbi(ADCSRA, ADPS2);
-	sbi(ADCSRA, ADPS1);
-	sbi(ADCSRA, ADPS0);
-
-	// enable a2d conversions
-	sbi(ADCSRA, ADEN);
-
-	// the bootloader connects pins 0 and 1 to the USART; disconnect them
-	// here so they can be used as normal digital i/o; they will be
-	// reconnected in Serial.begin()
-	#if defined(__AVR_ATmega8__)
-	UCSRB = 0;
-	//#else
-	//UCSR0B = 0;
-	#endif
-}
-
-
 #define MAXPULSE 65000
 
 long vel = 20000;
-uint16_t pulses[400];
-uint8_t currentPulse = 0;
-uint16_t highpulse = 0, lowpulse = 0;
+//uint16_t pulses[400];
 
 /*
 	State Summary:
@@ -167,9 +26,11 @@ uint16_t highpulse = 0, lowpulse = 0;
 	3: play tune
 */
 uint8_t state = 0;
-uint8_t buffer[50];
-uint8_t currentBit = 0;
-uint8_t currentByte = 0;
+volatile uint8_t currentPulse = 0;
+volatile uint16_t highpulse = 0, lowpulse = 0;
+volatile uint8_t buffer[50];
+volatile uint8_t currentBit = 0;
+volatile uint8_t currentByte = 0;
 uint8_t crc = 0;
 
 uint8_t cycles;
@@ -182,7 +43,6 @@ uint8_t cycles;
 
 int main(void)
 {
-	init();
 	// Set RGB LEDs as output
 	DDRD |= (1 << PD0);
 	DDRD |= (1 << PD1);
@@ -194,7 +54,7 @@ int main(void)
 	DDRD &= ~(1 << PD3);
 	DDRD &= ~(1 << PD7);
 	// Set speaker as output
-	DDRD |= (1 << PD5);
+	//DDRD |= (1 << PD5);
 	// Set IR Transmitter as output
 	DDRD |= (1 << PD6);
 	// Set IR Receiver as input
@@ -204,10 +64,23 @@ int main(void)
 	
 	_delay_ms(100);
 	
+	TCCR1A = 0x00;
+	TCCR1B |= (1 << WGM12)|(1 << CS11);
+	TCNT1 = 0;
+	OCR1A = 26;
+	TIMSK |= (1 << OCIE1A);
+	sei();
+	
+	state = 1;
+	
+	for (int i = 0; i < 50; i++) {
+		buffer[i] = 0;
+	}
+	
     while(1)
     {
-		checkleftButton();
-		checkRightButton();
+		//checkleftButton();
+		//checkRightButton();
 		//switch(state)
 		//{
 			//case 3:
@@ -222,6 +95,52 @@ int main(void)
 			//break;
 		//}
     }
+}
+
+ISR(TIMER1_COMPA_vect) {
+	if (state == 1) {
+		if (PINC & (1 << 5)) {
+			//high
+			if (lowpulse >= 200 && lowpulse <= 300)
+			{
+				//this is a 1
+				buffer[currentByte] |= (1 << currentBit);
+			}
+			else if (lowpulse >= 50 && lowpulse <= 150)
+			{
+				//this is a 0
+				buffer[currentByte] &= ~(1 << currentBit);
+			}
+			lowpulse = 0;
+			highpulse++;
+		} else {
+			//low
+			lowpulse++;
+			highpulse = 0;
+		}
+		
+		if (highpulse >= MAXPULSE || lowpulse >= MAXPULSE) {
+			if (currentPulse != 0) {
+				if (currentBit != 0) {
+					// error, clear everything
+				} else {
+					buffer[currentByte] = END_MARKER;
+					PORTD |= (1 << PD2);
+					state = 3;
+				}
+				currentBit = currentByte = currentPulse = 0;
+			}
+			PORTD |= (1 << PD0);
+			return;
+		}
+		
+		if (++currentBit == 8)
+		{
+			currentBit = 0;
+			currentByte++;
+		}
+		currentPulse++;
+	}
 }
 
 
@@ -265,25 +184,25 @@ uint8_t leftButtonTotal = 0;
 
 void checkleftButton()
 {
-	if (millis() - leftButtonTime > leftButtonDebounce)
-	{
-		getleftButtonReading();
-		if (leftButtonAvgTouchVal - leftButtonAvgTouchValOld > 1.0)
-		{
-			leftButtonPinTouched = true;
-		} else {
-			leftButtonPinTouched = false;
-		}
-		if (leftButtonPinTouched == true && leftButtonPinTouchedOld == false)
-		{
-			leftButtonTime = millis();
-			leftButtonPressed();
-		} else if (leftButtonPinTouched == false && leftButtonPinTouchedOld == true)
-		{
-			leftButtonTime = millis();
-		}
-		leftButtonPinTouchedOld = leftButtonPinTouched;
-	}
+	//if (millis() - leftButtonTime > leftButtonDebounce)
+	//{
+		//getleftButtonReading();
+		//if (leftButtonAvgTouchVal - leftButtonAvgTouchValOld > 1.0)
+		//{
+			//leftButtonPinTouched = true;
+		//} else {
+			//leftButtonPinTouched = false;
+		//}
+		//if (leftButtonPinTouched == true && leftButtonPinTouchedOld == false)
+		//{
+			//leftButtonTime = millis();
+			//leftButtonPressed();
+		//} else if (leftButtonPinTouched == false && leftButtonPinTouchedOld == true)
+		//{
+			//leftButtonTime = millis();
+		//}
+		//leftButtonPinTouchedOld = leftButtonPinTouched;
+	//}
 }
 
 void getleftButtonReading()
@@ -308,25 +227,25 @@ void getleftButtonReading()
 
 void checkRightButton()
 {
-	if (millis() - rightButtonTime > rightButtonDebounce)
-	{
-		getRightButtonReading();
-		if (rightButtonAvgTouchVal - rightButtonAvgTouchValOld > 1.0)
-		{
-			rightButtonPinTouched = true;
-			} else {
-			rightButtonPinTouched = false;
-		}
-		if (rightButtonPinTouched == true && rightButtonPinTouchedOld == false)
-		{
-			rightButtonTime = millis();
-			rightButtonPressed();
-		} else if (rightButtonPinTouched == false && rightButtonPinTouchedOld == true)
-		{
-			rightButtonTime = millis();
-		}
-		rightButtonPinTouchedOld = rightButtonPinTouched;
-	}
+	//if (millis() - rightButtonTime > rightButtonDebounce)
+	//{
+		//getRightButtonReading();
+		//if (rightButtonAvgTouchVal - rightButtonAvgTouchValOld > 1.0)
+		//{
+			//rightButtonPinTouched = true;
+			//} else {
+			//rightButtonPinTouched = false;
+		//}
+		//if (rightButtonPinTouched == true && rightButtonPinTouchedOld == false)
+		//{
+			//rightButtonTime = millis();
+			//rightButtonPressed();
+		//} else if (rightButtonPinTouched == false && rightButtonPinTouchedOld == true)
+		//{
+			//rightButtonTime = millis();
+		//}
+		//rightButtonPinTouchedOld = rightButtonPinTouched;
+	//}
 }
 
 void getRightButtonReading()
@@ -398,86 +317,86 @@ int readCapacitivePin(int pinToMeasure)
 
 void read_ir_data()
 {
-	while(1)
-	{
-		// Start out with no pulse length
-		highpulse = lowpulse = 0;
-		
-		// While pin is high
-		while(DDRC & (1 << PC6))
-		{
-			highpulse++;
-			_delay_us(20);
-			
-			/*
-			If the pulse is too long, we have timed out
-			Either nothing was received or the code is finished
-			Process what we've grabbed so far and then reset
-			*/
-			if ((highpulse >= MAXPULSE) && (currentPulse != 0))
-			{
-				processData();
-				currentPulse = 0;
-				return;
-			}
-		}
-		
-		// While pin is low
-		while(!(DDRC & (1 << PC6)))
-		{
-			lowpulse++;
-			_delay_us(20);
-			if ((lowpulse >= MAXPULSE) && (currentPulse != 0))
-			{
-				processData();
-				currentPulse = 0;
-				return;
-			}
-		}
-		
-		pulses[currentPulse] = lowpulse;
-		
-		// We've read one high, one low, now let's do another
-		currentPulse++;
-	}
+	//while(1)
+	//{
+		//// Start out with no pulse length
+		//highpulse = lowpulse = 0;
+		//
+		//// While pin is high
+		//while(DDRC & (1 << PC6))
+		//{
+			//highpulse++;
+			//_delay_us(20);
+			//
+			///*
+			//If the pulse is too long, we have timed out
+			//Either nothing was received or the code is finished
+			//Process what we've grabbed so far and then reset
+			//*/
+			//if ((highpulse >= MAXPULSE) && (currentPulse != 0))
+			//{
+				//processData();
+				//currentPulse = 0;
+				//return;
+			//}
+		//}
+		//
+		//// While pin is low
+		//while(!(DDRC & (1 << PC6)))
+		//{
+			//lowpulse++;
+			//_delay_us(20);
+			//if ((lowpulse >= MAXPULSE) && (currentPulse != 0))
+			//{
+				//processData();
+				//currentPulse = 0;
+				//return;
+			//}
+		//}
+		//
+		//pulses[currentPulse] = lowpulse;
+		//
+		//// We've read one high, one low, now let's do another
+		//currentPulse++;
+	//}
 }
 
 void processData()
 {
-	// we only want full bytes, which requires 8 bits
-	if ((currentPulse+1)%8 != 0)
-	{
-		// this is bad data, escape!
-		state = 2;
-		return;
-	}
-	
-	currentBit = 0;
-	currentByte = 0;
-	
-	for (uint8_t i = 0; i < currentPulse; i++)
-	{
-		if (pulses[i] >= 900 || pulses[i] <= 1500)
-		{
-			// this is a 1
-			buffer[currentByte] = buffer[currentByte] | (1 << currentBit);
-		} else if (pulses[i] >= 400 || pulses[i] <= 750)
-		{
-			// this is a 0
-		} else {
-			// bad data, escape!
-			memset(buffer, 0, 50);
-			state = 2;
-			return;
-		}
-		if (++currentBit == 8)
-		{
-			currentBit = 0;
-			currentByte++;
-		}
-	}
-	buffer[currentByte] = END_MARKER;
-	state = 3;
+	//// we only want full bytes, which requires 8 bits
+	//if ((currentPulse+1)%8 != 0)
+	//{
+		//// this is bad data, escape!
+		//state = 2;
+		//return;
+	//}
+	//
+	//currentBit = 0;
+	//currentByte = 0;
+	//
+	//for (uint8_t i = 0; i < currentPulse; i++)
+	//{
+		//if (pulses[i] >= 900 || pulses[i] <= 1500)
+		//{
+			//// this is a 1
+			//buffer[currentByte] = buffer[currentByte] | (1 << currentBit);
+		//} else if (pulses[i] >= 400 || pulses[i] <= 750)
+		//{
+			//// this is a 0
+		//} else {
+			//// bad data, escape!
+			//memset(buffer, 0, 50);
+			//state = 2;
+			//return;
+		//}
+		//if (++currentBit == 8)
+		//{
+			//currentBit = 0;
+			//currentByte++;
+		//}
+	//}
+	//buffer[currentByte] = END_MARKER;
+	//state = 3;
 }
 
 void send_data(uint8_t *pByte)

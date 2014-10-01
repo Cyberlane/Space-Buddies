@@ -184,6 +184,8 @@ uint8_t rightButtonReadingAvgIndex = 0;
 uint8_t state = 0;
 
 
+//uint16_t compval = 7811;
+
 void setup() {
     // Set RGB LEDs as output
     DDRD |= (1 << PD0);
@@ -217,41 +219,113 @@ void setup() {
     for (int i = 0; i < 50; i++) {
         buffer[i] = 0;
     }
+    
+    TCCR1A = 0x00;
+    TCCR1B |= (1 << WGM12)|(1 << CS12)|(1 << CS10);
+    TCNT1 = 0;
+    OCR1A = 7811;
+    TIMSK |= (1 << OCIE1A);
+    sei();
+//    
+//    state = 1;
+}
+
+
+// this won't work, as it clears lowpulse before it gets to the setting
+// need a volatile to check previous state, and if previous was low,
+//   when you hit a high, do the logic of setting the bit/byte, and then clear
+ISR(TIMER1_COMPA_vect) {
+  PORTD ^= (1 << PD2);
+//  if (state == 1) {
+//    if (PINC & (1 << 5)) {
+//      //high
+//      lowpulse = 0;
+//      highpulse++;
+//    } else {
+//      //low
+//      lowpulse++;
+//      highpulse = 0;
+//    }
+//    
+//    if (highpulse >= MAXPULSE || lowpulse >= MAXPULSE) {
+//      if (currentPulse != 0) {
+//        if (currentBit != 0) {
+//          // error, clear everything
+//        } else {
+//          buffer[currentByte] = END_MARKER;
+//          PORTD |= (1 << PD2);
+//          state = 3;
+//        }
+//        currentBit = currentByte = currentPulse = 0;
+//      }
+//      return;
+//    }
+//    
+//    if (lowpulse >= 200 && lowpulse <= 300)
+//    {
+//        //this is a 1
+//        buffer[currentByte] |= (1 << currentBit);
+//    }
+//    else if (lowpulse >= 50 && lowpulse <= 150)
+//    {
+//        //this is a 0
+//        buffer[currentByte] &= ~(1 << currentBit);
+//    }
+//    else
+//    {
+//        // bad data, escape!
+//        if (currentBit == 0) {
+//            //TODO: Add a CRC validator here
+//        } else {
+//            state = 0;
+//            // error
+//            return;
+//        }
+//    }
+//    
+//    if (++currentBit == 8)
+//    {
+//        currentBit = 0;
+//        currentByte++;
+//    }
+//    
+//    currentPulse++;
+//  }
 }
 
 void loop() {
-    switch(state) {
-        case 0:
-            //PORTD |= (1 << PD2);
-            checkButtons();
-            //PORTD &= ~(1 << PD2);
-        break;
-        case 1:
-            //PORTD |= (1 << PD1);
-            read_ir_data();
-            //PORTD &= ~(1 << PD1);
-        break;
-        case 2:
-            PORTB |= (1 << PB1);
-            send_data(mario);
-            PORTB &= ~(1 << PB1);
-        break;
-        case 3:
-            save_buffer();
-        break;
-        case 4:
-            move_selected_to_buffer();
-            //play(buffer);
-            send_data(buffer);
-        break;
-        case 5:
-            play(buffer);
-            state = 0;
-        break;
-        default:
-            state = 0;
-        break;
-    }
+//    switch(state) {
+//        case 0:
+//            //PORTD |= (1 << PD2);
+//            checkButtons();
+//            //PORTD &= ~(1 << PD2);
+//        break;
+//        case 1:
+//            //PORTD |= (1 << PD1);
+//            read_ir_data();
+//            //PORTD &= ~(1 << PD1);
+//        break;
+//        case 2:
+//            PORTB |= (1 << PB1);
+//            send_data(mario);
+//            PORTB &= ~(1 << PB1);
+//        break;
+//        case 3:
+//            save_buffer();
+//        break;
+//        case 4:
+//            move_selected_to_buffer();
+//            //play(buffer);
+//            send_data(buffer);
+//        break;
+//        case 5:
+//            play(buffer);
+//            state = 0;
+//        break;
+//        default:
+//            state = 0;
+//        break;
+//    }
 }
 
 void move_selected_to_buffer()
