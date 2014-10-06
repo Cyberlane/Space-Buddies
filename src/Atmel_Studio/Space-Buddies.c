@@ -26,14 +26,30 @@ long vel = 20000;
 	3: play tune
 */
 uint8_t state = 0;
-volatile uint8_t currentPulse = 0;
-volatile uint16_t highpulse = 0, lowpulse = 0;
+volatile uint16_t currentPulse = 0;
+volatile uint16_t highpulse = 0;
+volatile uint16_t lowpulse = 0;
 volatile uint8_t buffer[50];
 volatile uint8_t currentBit = 0;
 volatile uint8_t currentByte = 0;
 uint8_t crc = 0;
 
-uint8_t cycles;
+#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
+#define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
+// the prescaler is set so that timer0 ticks every 64 clock cycles, and the
+// the overflow handler is called every 256 ticks.
+#define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
+// the whole number of milliseconds per timer0 overflow
+#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
+// the fractional number of milliseconds per timer0 overflow. we shift right
+// by three to fit these numbers into a byte. (for the clock speeds we care
+// about - 8 and 16 MHz - this doesn't lose precision.)
+#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
+#define FRACT_MAX (1000 >> 3)
+
+volatile unsigned long timer0_overflow_count = 0;
+volatile unsigned long timer0_millis = 0;
+static unsigned char timer0_fract = 0;
 
 //Untested: Migrate capactive touch logic from Arduino to AVR C
 //TODO: Need logic to set "current tune", toggled by button press
@@ -64,12 +80,7 @@ int main(void)
 	
 	_delay_ms(100);
 	
-	TCCR1A = 0x00;
-	TCCR1B |= (1 << WGM12)|(1 << CS11);
-	TCNT1 = 0;
-	OCR1A = 26;
-	TIMSK |= (1 << OCIE1A);
-	sei();
+	timer_init();
 	
 	state = 1;
 	
@@ -79,70 +90,130 @@ int main(void)
 	
     while(1)
     {
-		//checkleftButton();
-		//checkRightButton();
-		//switch(state)
-		//{
-			//case 3:
-			//play(buffer);
-			//break;
-			//case 2:
-			//send_data(mario);
-			//break;
-			//default:
-			//case 1:
-			//read_ir_data();
-			//break;
-		//}
+		switch(state)
+		{
+			case 0:
+			{
+				checkButtons();
+				break;
+			}
+			case 1:
+			{
+				read_ir_data();
+				break;
+			}
+			case 2:
+			{
+				PORTB |= (1 << PB1);
+				send_data(mario);
+				PORTB &= ~(1 << PB1);
+				break;
+			}
+			case 3:
+			{
+				save_buffer();
+				break;
+			}
+			case 4:
+			{
+				move_selected_to_buffer();
+				// play(buffer);
+				send_data(buffer);
+				break;
+			}
+			case 5:
+			{
+				play(buffer);
+				state = 0;
+				break;
+			}
+			default:
+			{
+				state = 0;
+				break;
+			}
+		}
     }
 }
 
-ISR(TIMER1_COMPA_vect) {
-	if (state == 1) {
-		if (PINC & (1 << 5)) {
-			//high
-			if (lowpulse >= 200 && lowpulse <= 300)
-			{
-				//this is a 1
-				buffer[currentByte] |= (1 << currentBit);
-			}
-			else if (lowpulse >= 50 && lowpulse <= 150)
-			{
-				//this is a 0
-				buffer[currentByte] &= ~(1 << currentBit);
-			}
-			lowpulse = 0;
-			highpulse++;
-		} else {
-			//low
-			lowpulse++;
-			highpulse = 0;
-		}
-		
-		if (highpulse >= MAXPULSE || lowpulse >= MAXPULSE) {
-			if (currentPulse != 0) {
-				if (currentBit != 0) {
-					// error, clear everything
-				} else {
-					buffer[currentByte] = END_MARKER;
-					PORTD |= (1 << PD2);
-					state = 3;
-				}
-				currentBit = currentByte = currentPulse = 0;
-			}
-			PORTD |= (1 << PD0);
-			return;
-		}
-		
-		if (++currentBit == 8)
-		{
-			currentBit = 0;
-			currentByte++;
-		}
-		currentPulse++;
+SIGNAL(TIMER0_OVF_vect)
+{
+	// copy these to local variables so they can be stored in registers
+	// (volatile variables must be read from memory on every access)
+	unsigned long m = timer0_millis;
+	unsigned char f = timer0_fract;
+	
+	m += MILLIS_INC;
+	f += FRACT_INC;
+	if (f >= FRACT_MAX)
+	{
+		f -= FRACT_MAX;
+		m += 1;
 	}
+	
+	timer0_fract = f;
+	timer0_millis = m;
+	timer0_overflow_count++;
 }
 
+unsigned long millis()
+{
+	unsigned long m;
+	uint8_t oldSREG = SREG;
+	
+	// disable interrupts while we read timer0_millis or we might get an
+	// inconsistent value (e.g. in the middle of a write to timer0_millis)
+	cli();
+	m = timer0_millis;
+	SREG = oldSREG;
+	
+	return m;
+}
+
+void timer_init()
+{
+	// Timer 0
+	
+	// Timer 1
+	TCCR1A = 0x00;
+	TCCR1B |= (1 << WGM12)|(1 << CS11);
+	TCNT1 = 0;
+	OCR1A = 26;
+	TIMSK |= (1 << OCIE1A);
+	// Timer 2
+	
+	// Turn on interrupts
+	sei();
+}
+
+void move_selected_to_buffer()
+{
+}
+
+void save_buffer()
+{
+    //TODO: Save buffer to eeprom
+    /*
+        First byte is index position (1-10)
+        Last byte is crc
+        Everything else is the tune!
+    */
+    
+    //TODO: Set current Tune to newly saved index
+    state = 5;
+}
+
+void checkButtons()
+{
+	checkleftButton();
+	checkRightButton();
+	if (!(PINC & _BV(PC5)))
+	{
+		// If we see any incoming IR, escape button check mode
+		//   Perhaps impl a counter to prevent stray data, however if adding that, auto-increase that number to first pulse count to prevent bad data escape!
+		state = 1;
+	}
+}
 
 void rightButtonPressed()
 {
@@ -184,31 +255,34 @@ uint8_t leftButtonTotal = 0;
 
 void checkleftButton()
 {
-	//if (millis() - leftButtonTime > leftButtonDebounce)
-	//{
-		//getleftButtonReading();
-		//if (leftButtonAvgTouchVal - leftButtonAvgTouchValOld > 1.0)
-		//{
-			//leftButtonPinTouched = true;
-		//} else {
-			//leftButtonPinTouched = false;
-		//}
-		//if (leftButtonPinTouched == true && leftButtonPinTouchedOld == false)
-		//{
-			//leftButtonTime = millis();
-			//leftButtonPressed();
-		//} else if (leftButtonPinTouched == false && leftButtonPinTouchedOld == true)
-		//{
-			//leftButtonTime = millis();
-		//}
-		//leftButtonPinTouchedOld = leftButtonPinTouched;
-	//}
+	if (millis() - leftButtonTime > leftButtonDebounce)
+	{
+		getleftButtonReading();
+		if (leftButtonAvgTouchVal - leftButtonAvgTouchValOld > 1.0)
+		{
+			leftButtonPinTouched = true;
+		}
+		else
+		{
+			leftButtonPinTouched = false;
+		}
+		if (leftButtonPinTouched == true && leftButtonPinTouchedOld == false)
+		{
+			leftButtonTime = millis();
+			leftButtonPressed();
+		}
+		else if (leftButtonPinTouched == false && leftButtonPinTouchedOld == true)
+		{
+			leftButtonTime = millis();
+		}
+		leftButtonPinTouchedOld = leftButtonPinTouched;
+	}
 }
 
 void getleftButtonReading()
 {
 	leftButtonTotal -= leftButtonReadings[leftButtonReadingIndex];
-	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(PD7);
+	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(DDRD, PORTD, PIND, PD7);
 	leftButtonTotal += leftButtonReadings[leftButtonReadingIndex];
 	leftButtonReadingIndex++;
 	if (leftButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -227,31 +301,34 @@ void getleftButtonReading()
 
 void checkRightButton()
 {
-	//if (millis() - rightButtonTime > rightButtonDebounce)
-	//{
-		//getRightButtonReading();
-		//if (rightButtonAvgTouchVal - rightButtonAvgTouchValOld > 1.0)
-		//{
-			//rightButtonPinTouched = true;
-			//} else {
-			//rightButtonPinTouched = false;
-		//}
-		//if (rightButtonPinTouched == true && rightButtonPinTouchedOld == false)
-		//{
-			//rightButtonTime = millis();
-			//rightButtonPressed();
-		//} else if (rightButtonPinTouched == false && rightButtonPinTouchedOld == true)
-		//{
-			//rightButtonTime = millis();
-		//}
-		//rightButtonPinTouchedOld = rightButtonPinTouched;
-	//}
+	if (millis() - rightButtonTime > rightButtonDebounce)
+	{
+		getRightButtonReading();
+		if (rightButtonAvgTouchVal - rightButtonAvgTouchValOld > 1.0)
+		{
+			rightButtonPinTouched = true;
+		}
+		else
+		{
+			rightButtonPinTouched = false;
+		}
+		if (rightButtonPinTouched == true && rightButtonPinTouchedOld == false)
+		{
+			rightButtonTime = millis();
+			rightButtonPressed();
+		}
+		else if (rightButtonPinTouched == false && rightButtonPinTouchedOld == true)
+		{
+			rightButtonTime = millis();
+		}
+		rightButtonPinTouchedOld = rightButtonPinTouched;
+	}
 }
 
 void getRightButtonReading()
 {
 	rightButtonTotal -= rightButtonReadings[rightButtonReadingIndex];
-	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(PD7);
+	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(DDRD, PORTD, PIND, PD7);
 	rightButtonTotal += rightButtonReadings[rightButtonReadingIndex];
 	rightButtonReadingIndex++;
 	if (rightButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -268,135 +345,183 @@ void getRightButtonReading()
 	rightButtonAvgTouchValOld = rightButtonReadingAvg[rightButtonReadingAvgIndex];
 }
 
-int readCapacitivePin(int pinToMeasure)
+int readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, int pinToMeasure)
 {
-	// set to output
-	DDRD |= (1 << pinToMeasure);
+	uint8_t bitmask = _BV(pinToMeasure);
+
 	// set to low
-	PORTD &= ~(1 << pinToMeasure);
+	*port &= ~(bitmask);
+	// set to output
+	*ddr |= bitmask;
 	_delay_ms(1);
 	// No background interrupts
 	cli();
 	// Make pin input with pull-up on
-	DDRD &= ~(1 << pinToMeasure);
-	PORTD |= (1 << pinToMeasure);
+	*ddr &= ~(bitmask);
+	*port |= bitmask;
 	
 	// Check to see how long the pin stays high
 	// Manual if statements instead of a loop to decrease hardware cycles between each read of the pin and increase sensitivity as a result
 	
-	cycles = 17;
-	if (PORTD & (1 << pinToMeasure)) { cycles = 0; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 0; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 1; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 2; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 3; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 4; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 5; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 6; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 7; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 8; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 9; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 10; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 11; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 12; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 13; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 14; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 15; }
-	else if (PORTD & (1 << pinToMeasure)) { cycles = 16; }
+	uint8_t cycles = 17;
+	if (*pin & bitmask) { cycles = 0; }
+	else if (*pin & bitmask) { cycles = 0; }
+	else if (*pin & bitmask) { cycles = 1; }
+	else if (*pin & bitmask) { cycles = 2; }
+	else if (*pin & bitmask) { cycles = 3; }
+	else if (*pin & bitmask) { cycles = 4; }
+	else if (*pin & bitmask) { cycles = 5; }
+	else if (*pin & bitmask) { cycles = 6; }
+	else if (*pin & bitmask) { cycles = 7; }
+	else if (*pin & bitmask) { cycles = 8; }
+	else if (*pin & bitmask) { cycles = 9; }
+	else if (*pin & bitmask) { cycles = 10; }
+	else if (*pin & bitmask) { cycles = 11; }
+	else if (*pin & bitmask) { cycles = 12; }
+	else if (*pin & bitmask) { cycles = 13; }
+	else if (*pin & bitmask) { cycles = 14; }
+	else if (*pin & bitmask) { cycles = 15; }
+	else if (*pin & bitmask) { cycles = 16; }
 	
 	// Turn background interrupts back on	
 	sei();
 	
 	// Discharge the pin by setting it to low and output
 	// Extremely important to pull these back down, otherwise you cannot use this on multiple pins
-	PORTD &= ~(1 << pinToMeasure);
-	DDRD |= (1 << pinToMeasure);
+	PORTD &= ~(bitmask);
+	DDRD |= bitmask;
 	
 	return cycles;
 }
 
-void read_ir_data()
+void show_error(uint8_t code, uint8_t subCode)
 {
-	//while(1)
-	//{
-		//// Start out with no pulse length
-		//highpulse = lowpulse = 0;
-		//
-		//// While pin is high
-		//while(DDRC & (1 << PC6))
-		//{
-			//highpulse++;
-			//_delay_us(20);
-			//
-			///*
-			//If the pulse is too long, we have timed out
-			//Either nothing was received or the code is finished
-			//Process what we've grabbed so far and then reset
-			//*/
-			//if ((highpulse >= MAXPULSE) && (currentPulse != 0))
-			//{
-				//processData();
-				//currentPulse = 0;
-				//return;
-			//}
-		//}
-		//
-		//// While pin is low
-		//while(!(DDRC & (1 << PC6)))
-		//{
-			//lowpulse++;
-			//_delay_us(20);
-			//if ((lowpulse >= MAXPULSE) && (currentPulse != 0))
-			//{
-				//processData();
-				//currentPulse = 0;
-				//return;
-			//}
-		//}
-		//
-		//pulses[currentPulse] = lowpulse;
-		//
-		//// We've read one high, one low, now let's do another
-		//currentPulse++;
-	//}
+	while(code--)
+	{
+		PORTD |= (1 << PD2);
+		_delay_ms(250);
+		PORTD &= ~(1 << PD2);
+		_delay_ms(250);
+	}
+	_delay_ms(500);
+	uint8_t bigger = subCode / 10;
+	uint8_t lesser = subCode % 10;
+	while(bigger--)
+	{
+		PORTD |= (1 << PD0);
+		_delay_ms(250);
+		PORTD &= ~(1 << PD0);
+		_delay_ms(250);
+	}
+	while (lesser--)
+	{
+		PORTD |= (1 << PD1);
+		_delay_ms(250);
+		PORTD &= ~(1 << PD1);
+		_delay_ms(250);
+	}
 }
 
-void processData()
+void read_ir_data()
 {
-	//// we only want full bytes, which requires 8 bits
-	//if ((currentPulse+1)%8 != 0)
-	//{
-		//// this is bad data, escape!
-		//state = 2;
-		//return;
-	//}
-	//
-	//currentBit = 0;
-	//currentByte = 0;
-	//
-	//for (uint8_t i = 0; i < currentPulse; i++)
-	//{
-		//if (pulses[i] >= 900 || pulses[i] <= 1500)
-		//{
-			//// this is a 1
-			//buffer[currentByte] = buffer[currentByte] | (1 << currentBit);
-		//} else if (pulses[i] >= 400 || pulses[i] <= 750)
-		//{
-			//// this is a 0
-		//} else {
-			//// bad data, escape!
-			//memset(buffer, 0, 50);
-			//state = 2;
-			//return;
-		//}
-		//if (++currentBit == 8)
-		//{
-			//currentBit = 0;
-			//currentByte++;
-		//}
-	//}
-	//buffer[currentByte] = END_MARKER;
-	//state = 3;
+	currentBit = currentByte = 0;
+	
+	while(1)
+	{
+		// Start out with no pulse length
+		highpulse = lowpulse = 0;
+		
+		// While pin is high
+		while(PINC & (1 << PC5))
+		{
+			highpulse++;
+			_delay_us(20);
+			
+			/*
+			If the pulse is too long, we have timed out
+			Either nothing was received or the code is finished
+			Process what we've grabbed so far and then reset
+			*/
+			if (highpulse >= MAXPULSE)
+			{
+				if (currentPulse != 0)
+				{
+					if (currentBit != 0)
+					{
+						// bad data, escape!
+						show_error(1, currentByte);
+						state = 0; // check for buttons
+					}
+					else
+					{
+						buffer[currentByte] = END_MARKER;
+						state = 3; // save buffer to eeprom
+					}
+					currentPulse = 0;
+				}
+				return;
+			}
+		}
+		
+		// While pin is low
+		while(!(PINC & _BV(PC5)))
+		{
+			lowpulse++;
+			_delay_us(20);
+			if (lowpulse >= MAXPULSE)
+			{
+				if (currentPulse != 0)
+				{
+					if (currentBit != 0)
+					{
+						// bad data, escape!
+						show_error(2, currentBit);
+						state = 0; // check for buttons
+					}
+					else
+					{
+						buffer[currentByte] = END_MARKER;
+						state = 3; // save buffer to eeprom
+					}
+					currentPulse = 0;
+				}
+				return;
+			}
+		}
+		
+		if (lowpulse >= 200 && lowpulse <= 300)
+		{
+			// this is a 1
+			buffer[currentByte] |= (1 << currentBit);
+		}
+		else if (lowpulse >= 50 && lowpulse <= 150)
+		{
+			// this is a 0
+			buffer[currentByte] &= ~(1 << currentBit);
+		}
+		else
+		{
+			// bad data, escape!
+			if (currentBit == 0)
+			{
+				// TODO: Add a CRC validator here
+			}
+			else
+			{
+				state = 0;
+				show_error(3, currentBit);
+				return;
+			}
+		}
+		
+		if (++currentBit == 8)
+		{
+			currentBit = 0;
+			currentByte++;
+		}
+		
+		currentPulse++;
+	}
 }
 
 void send_data(uint8_t *pByte)
@@ -406,10 +531,13 @@ void send_data(uint8_t *pByte)
 		currentBit = 0;
 		while (currentBit < 8)
 		{
-			if (READ_BIT(*pByte, currentBit) == 1) {
-				sendIR(1000);
-			} else {
-				sendIR(500);
+			if (READ_BIT(*pByte, currentBit) == 1)
+			{
+				sendIR(220);
+			}
+			else
+			{
+				sendIR(100);
 			}
 			_delay_us(500);
 			currentBit++;
@@ -418,11 +546,11 @@ void send_data(uint8_t *pByte)
 	}
 }
 
-void sendIR(int cycles)
+void sendIR(int ir_cycles)
 {
 	// Turn off background interrupts
 	cli();
-	while(cycles--)
+	while(ir_cycles--)
 	{
 		//TODO: Extract these into macros
 		PORTD |= (1 << PD6);
@@ -564,8 +692,8 @@ void play(uint8_t *pByte)
 
 void play_tone(int tone, long tempo_value)
 {
-	long tempo_gasto = 0;
-	while (tempo_gasto < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
+	long tempo_position = 0;
+	while (tempo_position < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
 		PORTD |= (1 << PD5);
 		delay_us(tone / 2);
@@ -573,6 +701,6 @@ void play_tone(int tone, long tempo_value)
 		PORTD &= ~(1 << PD5);
 		delay_us(tone / 2);
 		
-		tempo_gasto += tone;
+		tempo_position += tone;
 	}
 }
