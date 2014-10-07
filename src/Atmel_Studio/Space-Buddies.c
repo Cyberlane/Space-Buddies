@@ -14,10 +14,14 @@
 #include <util/delay.h>
 #include "Space-Buddies.h"
 #include "Space-Tunes.h"
+#include "SoftPWM.h"
 
 #define MAXPULSE 65000
 
-long vel = 20000;
+#define SET(x) |= (1 << x)
+#define CLR(x) &= ~(1 << x)
+
+long vel = 10000/1.25;
 //uint16_t pulses[400];
 
 /*
@@ -56,7 +60,6 @@ static unsigned char timer0_fract = 0;
 //Untested: Migrate capactive touch logic from Arduino to AVR C
 //TODO: Need logic to set "current tune", toggled by button press
 //TODO: Move buffer into EEPROM when data is successful
-//TODO: Implement timer/counter to handle flashing LEDs when state==3
 //TODO: Before each send, blink the current tune's LED colour
 
 int main(void)
@@ -87,6 +90,10 @@ int main(void)
 	for (int i = 0; i < 50; i++) {
 		buffer[i] = 0;
 	}
+	
+	//softpwm_init();
+	
+	//play(felix);
 	
     while(1)
     {
@@ -159,6 +166,64 @@ ISR(TIMER0_OVF_vect)
 	timer0_fract = f;
 	timer0_millis = m;
 	timer0_overflow_count++;
+}
+
+volatile uint8_t red = 180;
+volatile uint8_t green = 255;
+volatile uint8_t blue = 255;
+volatile uint8_t cnt = 0;
+
+void softpwm_init(void)
+{
+	PORTD SET(RED_L);
+	PORTB SET(RED_R);
+	PORTD SET(GREEN_L);
+	PORTB SET(GREEN_R);
+	PORTD SET(BLUE_L);
+	PORTB SET(BLUE_R);
+	
+	// Put timer2 in CTC mode and clear other bits
+	TCCR2 = (1 << WGM21);
+	// Timer2 prescaling 8 and clearing other bits
+	TCCR2 = (1 << CS20);
+	// enable timer2 compare interrupt
+	TIMSK |= (1 << OCIE2);
+	// Counter x cycles before calling an interrupt
+	OCR2 = 65;
+	
+	sei();
+}
+
+ISR(TIMER2_COMP_vect)
+{
+	cnt++;
+	
+	if (cnt > red)
+	{
+		PORTD SET(RED_L);
+		PORTB SET(RED_R);
+	} else {
+		PORTD CLR(RED_L);
+		PORTB CLR(RED_R);
+	}
+	
+	if (cnt > green)
+	{
+		PORTD SET(GREEN_L);
+		PORTB SET(GREEN_R);
+	} else {
+		PORTD CLR(GREEN_L);
+		PORTB CLR(GREEN_L);
+	}
+	
+	if (cnt > blue)
+	{
+		PORTD SET(BLUE_L);
+		PORTB SET(BLUE_R);
+	} else {
+		PORTD CLR(BLUE_L);
+		PORTB CLR(BLUE_R);
+	}
 }
 
 unsigned long millis()
