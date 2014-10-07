@@ -6,6 +6,8 @@
  */ 
 
 
+#define F_CPU 8000000UL
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdbool.h>
@@ -60,17 +62,17 @@ static unsigned char timer0_fract = 0;
 int main(void)
 {
 	// Set RGB LEDs as output
-	DDRD |= (1 << PD0);
-	DDRD |= (1 << PD1);
-	DDRD |= (1 << PD2);
-	DDRB |= (1 << PB0);
-	DDRB |= (1 << PB1);
-	DDRB |= (1 << PB2);
+	DDRD |= (1 << PD0); // blue
+	DDRD |= (1 << PD1); // green
+	DDRD |= (1 << PD2); // red
+	DDRB |= (1 << PB0); // red
+	DDRB |= (1 << PB1); // green
+	DDRB |= (1 << PB2); // blue
 	// Set buttons as input
 	DDRD &= ~(1 << PD3);
 	DDRD &= ~(1 << PD7);
 	// Set speaker as output
-	//DDRD |= (1 << PD5);
+	DDRD |= (1 << PD5);
 	// Set IR Transmitter as output
 	DDRD |= (1 << PD6);
 	// Set IR Receiver as input
@@ -80,9 +82,7 @@ int main(void)
 	
 	_delay_ms(100);
 	
-	timer_init();
-	
-	state = 1;
+	//timer_init();
 	
 	for (int i = 0; i < 50; i++) {
 		buffer[i] = 0;
@@ -90,53 +90,58 @@ int main(void)
 	
     while(1)
     {
-		switch(state)
-		{
-			case 0:
-			{
-				checkButtons();
-				break;
-			}
-			case 1:
-			{
-				read_ir_data();
-				break;
-			}
-			case 2:
-			{
-				PORTB |= (1 << PB1);
-				send_data(mario);
-				PORTB &= ~(1 << PB1);
-				break;
-			}
-			case 3:
-			{
-				save_buffer();
-				break;
-			}
-			case 4:
-			{
-				move_selected_to_buffer();
-				// play(buffer);
-				send_data(buffer);
-				break;
-			}
-			case 5:
-			{
-				play(buffer);
-				state = 0;
-				break;
-			}
-			default:
-			{
-				state = 0;
-				break;
-			}
-		}
+		//if (state != 0)
+		//{
+			//state = 0;
+		//}
+		//
+		//switch(state)
+		//{
+			//case 0:
+			//{
+				//checkButtons();
+				//break;
+			//}
+			//case 1:
+			//{
+				//read_ir_data();
+				//break;
+			//}
+			//case 2:
+			//{
+				//PORTB |= (1 << PB1);
+				//send_data(mario);
+				//PORTB &= ~(1 << PB1);
+				//break;
+			//}
+			//case 3:
+			//{
+				//save_buffer();
+				//break;
+			//}
+			//case 4:
+			//{
+				//move_selected_to_buffer();
+				//// play(buffer);
+				//send_data(buffer);
+				//break;
+			//}
+			//case 5:
+			//{
+				//play(buffer);
+				//state = 0;
+				//break;
+			//}
+			//default:
+			//{
+				//state = 0;
+				//break;
+			//}
+		//}
     }
 }
 
-SIGNAL(TIMER0_OVF_vect)
+ISR(TIMER0_OVF_vect)
 {
 	// copy these to local variables so they can be stored in registers
 	// (volatile variables must be read from memory on every access)
@@ -173,7 +178,8 @@ unsigned long millis()
 void timer_init()
 {
 	// Timer 0
-	
+	TCCR0 |= (1 << CS01)|(1 << CS00);
+	TIMSK |= (1 << TOIE0);
 	// Timer 1
 	TCCR1A = 0x00;
 	TCCR1B |= (1 << WGM12)|(1 << CS11);
@@ -408,19 +414,22 @@ void show_error(uint8_t code, uint8_t subCode)
 	uint8_t lesser = subCode % 10;
 	while(bigger--)
 	{
-		PORTD |= (1 << PD0);
+		PORTB |= (1 << PB0);
 		_delay_ms(250);
-		PORTD &= ~(1 << PD0);
+		PORTB &= ~(1 << PB0);
 		_delay_ms(250);
 	}
 	while (lesser--)
 	{
-		PORTD |= (1 << PD1);
+		PORTB |= (1 << PB1);
 		_delay_ms(250);
-		PORTD &= ~(1 << PD1);
+		PORTB &= ~(1 << PB1);
 		_delay_ms(250);
 	}
+	_delay_ms(1000);
 }
+
+#define IR_RESOLUTION 16
 
 void read_ir_data()
 {
@@ -435,7 +444,7 @@ void read_ir_data()
 		while(PINC & (1 << PC5))
 		{
 			highpulse++;
-			_delay_us(20);
+			_delay_us(IR_RESOLUTION);
 			
 			/*
 			If the pulse is too long, we have timed out
@@ -467,7 +476,7 @@ void read_ir_data()
 		while(!(PINC & _BV(PC5)))
 		{
 			lowpulse++;
-			_delay_us(20);
+			_delay_us(IR_RESOLUTION);
 			if (lowpulse >= MAXPULSE)
 			{
 				if (currentPulse != 0)
@@ -657,6 +666,9 @@ void play(uint8_t *pByte)
 			case T_BX:
 			tone = 506;
 			break;
+			case T_REST:
+			tone = 0;
+			break;
 		}
 		switch (GET_DURATION(*pByte)) {
 			case 0:
@@ -685,7 +697,14 @@ void play(uint8_t *pByte)
 			break;
 		}
 		long tvalue = duration * vel;
-		play_tone(tone, tvalue);
+		if (tone == 0)
+		{
+			delay_us(tvalue);
+		}
+		else
+		{
+			play_tone(tone, tvalue);	
+		}
 		++pByte;
 	}
 }
