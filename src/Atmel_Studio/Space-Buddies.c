@@ -22,7 +22,6 @@
 #define CLR(x) &= ~(1 << x)
 
 long vel = 10000/1.25;
-//uint16_t pulses[400];
 
 /*
 	State Summary:
@@ -40,16 +39,42 @@ volatile uint8_t currentBit = 0;
 volatile uint8_t currentByte = 0;
 uint8_t crc = 0;
 
+
+
+// Button Config only
+#define BUTTON_NUM_READINGS 5
+#define BUTTON_NUM_AVGS (BUTTON_NUM_READINGS + 1)
+unsigned long rightButtonDebounce = 0;
+unsigned long leftButtonDebounce = 0;
+// Right button - variables
+unsigned long rightButtonTime = 0;
+float rightButtonAvgTouchVal = 0;
+float rightButtonAvgTouchValOld = 0;
+bool rightButtonPinTouched = false;
+bool rightButtonPinTouchedOld = false;
+uint8_t rightButtonReadingIndex = 0;
+uint8_t rightButtonReadings[BUTTON_NUM_READINGS];
+uint8_t rightButtonReadingAvgIndex = 0;
+float rightButtonReadingAvg[BUTTON_NUM_AVGS];
+uint8_t rightButtonTotal = 0;
+// Left button - variables
+unsigned long leftButtonTime = 0;
+float leftButtonAvgTouchVal = 0;
+float leftButtonAvgTouchValOld = 0;
+bool leftButtonPinTouched = false;
+bool leftButtonPinTouchedOld = false;
+uint8_t leftButtonReadingIndex = 0;
+uint8_t leftButtonReadings[BUTTON_NUM_READINGS];
+uint8_t leftButtonReadingAvgIndex = 0;
+float leftButtonReadingAvg[BUTTON_NUM_AVGS];
+uint8_t leftButtonTotal = 0;
+
+
+
 #define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
 #define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
-// the prescaler is set so that timer0 ticks every 64 clock cycles, and the
-// the overflow handler is called every 256 ticks.
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
-// the whole number of milliseconds per timer0 overflow
 #define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-// the fractional number of milliseconds per timer0 overflow. we shift right
-// by three to fit these numbers into a byte. (for the clock speeds we care
-// about - 8 and 16 MHz - this doesn't lose precision.)
 #define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
 #define FRACT_MAX (1000 >> 3)
 
@@ -57,10 +82,46 @@ volatile unsigned long timer0_overflow_count = 0;
 volatile unsigned long timer0_millis = 0;
 static unsigned char timer0_fract = 0;
 
+ISR(TIMER0_OVF_vect)
+{
+	// copy these to local variables so they can be stored in registers
+	// (volatile variables must be read from memory on every access)
+	unsigned long m = timer0_millis;
+	unsigned char f = timer0_fract;
+	
+	m += MILLIS_INC;
+	f += FRACT_INC;
+	if (f >= FRACT_MAX)
+	{
+		f -= FRACT_MAX;
+		m += 1;
+	}
+	
+	timer0_fract = f;
+	timer0_millis = m;
+	timer0_overflow_count++;
+}
+
+unsigned long millis()
+{
+	unsigned long m;
+	uint8_t oldSREG = SREG;
+	
+	// disable interrupts while we read timer0_millis or we might get an
+	// inconsistent value (e.g. in the middle of a write to timer0_millis)
+	cli();
+	m = timer0_millis;
+	SREG = oldSREG;
+	
+	return m;
+}
+
 //Untested: Migrate capactive touch logic from Arduino to AVR C
 //TODO: Need logic to set "current tune", toggled by button press
 //TODO: Move buffer into EEPROM when data is successful
 //TODO: Before each send, blink the current tune's LED colour
+
+unsigned long tick = 0;
 
 int main(void)
 {
@@ -85,8 +146,16 @@ int main(void)
 	
 	_delay_ms(100);
 	
-	//timer_init();
+	timer_init();
 	
+	for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
+		leftButtonReadings[i] = 0;
+		rightButtonReadings[i] = 0;
+	}
+	for (int i = 0; i < BUTTON_NUM_AVGS; i++) {
+		leftButtonReadingAvg[i] = 0;
+		rightButtonReadingAvg[i] = 0;
+	}
 	for (int i = 0; i < 50; i++) {
 		buffer[i] = 0;
 	}
@@ -97,75 +166,55 @@ int main(void)
 	
     while(1)
     {
-		//if (state != 0)
-		//{
-			//state = 0;
-		//}
-		//
-		//switch(state)
-		//{
-			//case 0:
-			//{
-				//checkButtons();
-				//break;
-			//}
-			//case 1:
-			//{
-				//read_ir_data();
-				//break;
-			//}
-			//case 2:
-			//{
-				//PORTB |= (1 << PB1);
-				//send_data(mario);
-				//PORTB &= ~(1 << PB1);
-				//break;
-			//}
-			//case 3:
-			//{
-				//save_buffer();
-				//break;
-			//}
-			//case 4:
-			//{
-				//move_selected_to_buffer();
-				//// play(buffer);
-				//send_data(buffer);
-				//break;
-			//}
-			//case 5:
-			//{
-				//play(buffer);
-				//state = 0;
-				//break;
-			//}
-			//default:
-			//{
-				//state = 0;
-				//break;
-			//}
-		//}
+		if (state != 0)
+		{
+			state = 0;
+		}
+		
+		switch(state)
+		{
+			case 0:
+			{
+				checkButtons();
+				break;
+			}
+			case 1:
+			{
+				read_ir_data();
+				break;
+			}
+			case 2:
+			{
+				PORTB |= (1 << PB1);
+				send_data(mario);
+				PORTB &= ~(1 << PB1);
+				break;
+			}
+			case 3:
+			{
+				save_buffer();
+				break;
+			}
+			case 4:
+			{
+				move_selected_to_buffer();
+				// play(buffer);
+				send_data(buffer);
+				break;
+			}
+			case 5:
+			{
+				play(buffer);
+				state = 0;
+				break;
+			}
+			default:
+			{
+				state = 0;
+				break;
+			}
+		}
     }
-}
-
-ISR(TIMER0_OVF_vect)
-{
-	// copy these to local variables so they can be stored in registers
-	// (volatile variables must be read from memory on every access)
-	unsigned long m = timer0_millis;
-	unsigned char f = timer0_fract;
-	
-	m += MILLIS_INC;
-	f += FRACT_INC;
-	if (f >= FRACT_MAX)
-	{
-		f -= FRACT_MAX;
-		m += 1;
-	}
-	
-	timer0_fract = f;
-	timer0_millis = m;
-	timer0_overflow_count++;
 }
 
 volatile uint8_t red = 180;
@@ -226,36 +275,23 @@ ISR(TIMER2_COMP_vect)
 	}
 }
 
-unsigned long millis()
-{
-	unsigned long m;
-	uint8_t oldSREG = SREG;
-	
-	// disable interrupts while we read timer0_millis or we might get an
-	// inconsistent value (e.g. in the middle of a write to timer0_millis)
-	cli();
-	m = timer0_millis;
-	SREG = oldSREG;
-	
-	return m;
-}
-
 void timer_init()
 {
 	// Timer 0
 	TCCR0 |= (1 << CS01)|(1 << CS00);
 	TIMSK |= (1 << TOIE0);
 	// Timer 1
-	TCCR1A = 0x00;
-	TCCR1B |= (1 << WGM12)|(1 << CS11);
-	TCNT1 = 0;
-	OCR1A = 26;
-	TIMSK |= (1 << OCIE1A);
+	//TCCR1A = 0x00;
+	//TCCR1B |= (1 << WGM12)|(1 << CS11);
+	//TCNT1 = 0;
+	//OCR1A = 26;
+	//TIMSK |= (1 << OCIE1A);
 	// Timer 2
 	
 	// Turn on interrupts
 	sei();
 }
+
 
 void move_selected_to_buffer()
 {
@@ -276,14 +312,14 @@ void save_buffer()
 
 void checkButtons()
 {
-	checkleftButton();
+	checkLeftButton();
 	checkRightButton();
-	if (!(PINC & _BV(PC5)))
-	{
-		// If we see any incoming IR, escape button check mode
-		//   Perhaps impl a counter to prevent stray data, however if adding that, auto-increase that number to first pulse count to prevent bad data escape!
-		state = 1;
-	}
+	//if (!(PINC & _BV(PC5)))
+	//{
+		//// If we see any incoming IR, escape button check mode
+		////   Perhaps impl a counter to prevent stray data, however if adding that, auto-increase that number to first pulse count to prevent bad data escape!
+		//state = 1;
+	//}
 }
 
 void rightButtonPressed()
@@ -293,42 +329,14 @@ void rightButtonPressed()
 
 void leftButtonPressed()
 {
-	PORTB ^= (1 << PB0);
+	//PORTB ^= (1 << PB0);
 }
 
-// Button Config only
-#define BUTTON_NUM_READINGS 5
-#define BUTTON_NUM_AVGS (BUTTON_NUM_READINGS + 1)
-unsigned long rightButtonDebounce = 0;
-unsigned long leftButtonDebounce = 0;
-// Right button - variables
-unsigned long rightButtonTime = 0;
-float rightButtonAvgTouchVal = 0;
-float rightButtonAvgTouchValOld = 0;
-bool rightButtonPinTouched = false;
-bool rightButtonPinTouchedOld = false;
-uint8_t rightButtonReadingIndex = 0;
-uint8_t rightButtonReadings[BUTTON_NUM_READINGS];
-uint8_t rightButtonReadingAvgIndex = 0;
-float rightButtonReadingAvg[BUTTON_NUM_AVGS];
-uint8_t rightButtonTotal = 0;
-// Left button - variables
-unsigned long leftButtonTime = 0;
-float leftButtonAvgTouchVal = 0;
-float leftButtonAvgTouchValOld = 0;
-bool leftButtonPinTouched = false;
-bool leftButtonPinTouchedOld = false;
-uint8_t leftButtonReadingIndex = 0;
-uint8_t leftButtonReadings[BUTTON_NUM_READINGS];
-uint8_t leftButtonReadingAvgIndex = 0;
-float leftButtonReadingAvg[BUTTON_NUM_AVGS];
-uint8_t leftButtonTotal = 0;
-
-void checkleftButton()
+void checkLeftButton()
 {
 	if (millis() - leftButtonTime > leftButtonDebounce)
 	{
-		getleftButtonReading();
+		getLeftButtonReading();
 		if (leftButtonAvgTouchVal - leftButtonAvgTouchValOld > 1.0)
 		{
 			leftButtonPinTouched = true;
@@ -350,10 +358,10 @@ void checkleftButton()
 	}
 }
 
-void getleftButtonReading()
+void getLeftButtonReading()
 {
 	leftButtonTotal -= leftButtonReadings[leftButtonReadingIndex];
-	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(DDRD, PORTD, PIND, PD7);
+	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
 	leftButtonTotal += leftButtonReadings[leftButtonReadingIndex];
 	leftButtonReadingIndex++;
 	if (leftButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -399,7 +407,7 @@ void checkRightButton()
 void getRightButtonReading()
 {
 	rightButtonTotal -= rightButtonReadings[rightButtonReadingIndex];
-	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(DDRD, PORTD, PIND, PD7);
+	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(&DDRD, &PORTD, &PIND, PD3);
 	rightButtonTotal += rightButtonReadings[rightButtonReadingIndex];
 	rightButtonReadingIndex++;
 	if (rightButtonReadingIndex >= BUTTON_NUM_READINGS)
@@ -416,9 +424,9 @@ void getRightButtonReading()
 	rightButtonAvgTouchValOld = rightButtonReadingAvg[rightButtonReadingAvgIndex];
 }
 
-int readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, int pinToMeasure)
+int readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
 {
-	uint8_t bitmask = _BV(pinToMeasure);
+	uint8_t bitmask = (1 << pinNumber);
 
 	// set to low
 	*port &= ~(bitmask);
@@ -459,8 +467,8 @@ int readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile ui
 	
 	// Discharge the pin by setting it to low and output
 	// Extremely important to pull these back down, otherwise you cannot use this on multiple pins
-	PORTD &= ~(bitmask);
-	DDRD |= bitmask;
+	*port &= ~(bitmask);
+	*ddr |= bitmask;
 	
 	return cycles;
 }
@@ -598,7 +606,7 @@ void read_ir_data()
 	}
 }
 
-void send_data(uint8_t *pByte)
+void send_data(volatile uint8_t *pByte)
 {
 	while(*pByte != END_MARKER)
 	{
@@ -652,7 +660,7 @@ void delay_us(uint16_t count)
 	}
 }
 
-void play(uint8_t *pByte)
+void play(volatile uint8_t *pByte)
 {
 	while(*pByte != END_MARKER)
 	{

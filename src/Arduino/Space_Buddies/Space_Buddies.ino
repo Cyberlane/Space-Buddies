@@ -210,7 +210,7 @@ void setup() {
 
     for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
         leftButtonReadings[i] = 0;
-        rightButtonReadings[i];
+        rightButtonReadings[i] = 0;
     }
     for (int i = 0; i < BUTTON_NUM_AVGS; i++) {
         leftButtonReadingAvg[i] = 0;
@@ -294,38 +294,43 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 void loop() {
-//    switch(state) {
-//        case 0:
-//            //PORTD |= (1 << PD2);
-//            checkButtons();
-//            //PORTD &= ~(1 << PD2);
-//        break;
-//        case 1:
-//            //PORTD |= (1 << PD1);
-//            read_ir_data();
-//            //PORTD &= ~(1 << PD1);
-//        break;
-//        case 2:
-//            PORTB |= (1 << PB1);
-//            send_data(mario);
-//            PORTB &= ~(1 << PB1);
-//        break;
-//        case 3:
-//            save_buffer();
-//        break;
-//        case 4:
-//            move_selected_to_buffer();
-//            //play(buffer);
-//            send_data(buffer);
-//        break;
-//        case 5:
-//            play(buffer);
-//            state = 0;
-//        break;
-//        default:
-//            state = 0;
-//        break;
-//    }
+  if (state != 0)
+  {
+    state = 0;
+  }
+  
+    switch(state) {
+        case 0:
+            //PORTD |= (1 << PD2);
+            checkButtons();
+            //PORTD &= ~(1 << PD2);
+        break;
+        case 1:
+            //PORTD |= (1 << PD1);
+            read_ir_data();
+            //PORTD &= ~(1 << PD1);
+        break;
+        case 2:
+            PORTB |= (1 << PB1);
+            send_data(mario);
+            PORTB &= ~(1 << PB1);
+        break;
+        case 3:
+            save_buffer();
+        break;
+        case 4:
+            move_selected_to_buffer();
+            //play(buffer);
+            send_data(buffer);
+        break;
+        case 5:
+            play(buffer);
+            state = 0;
+        break;
+        default:
+            state = 0;
+        break;
+    }
 }
 
 void move_selected_to_buffer()
