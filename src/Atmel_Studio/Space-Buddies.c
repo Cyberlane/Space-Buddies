@@ -118,8 +118,6 @@ int main(void)
 	
 	_delay_ms(100);
 	
-	timer_init();
-	
 	for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
 		leftButtonReadings[i] = 0;
 		rightButtonReadings[i] = 0;
@@ -130,7 +128,9 @@ int main(void)
 	}
 	for (int i = 0; i < 50; i++) {
 		buffer[i] = 0;
-	}
+}
+
+timer_init();
 	
 	//play(felix);
 	
