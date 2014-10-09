@@ -96,23 +96,23 @@ uint8_t state = 0;
 int main(void)
 {
 	// Set RGB LEDs as output
-	DDRD |= (1 << PD0); // blue
-	DDRD |= (1 << PD1); // green
-	DDRD |= (1 << PD2); // red
-	DDRB |= (1 << PB0); // red
-	DDRB |= (1 << PB1); // green
-	DDRB |= (1 << PB2); // blue
+	DDRD SET(PD0); // blue
+	DDRD SET(PD1); // green
+	DDRD SET(PD2); // red
+	DDRB SET(PB0); // red
+	DDRB SET(PB1); // green
+	DDRB SET(PB2); // blue
 	// Set buttons as input
-	DDRD &= ~(1 << PD3);
-	DDRD &= ~(1 << PD7);
+	DDRD CLR(PD3);
+	DDRD CLR(PD7);
 	// Set speaker as output
-	DDRD |= (1 << PD5);
+	DDRD SET(PD5);
 	// Set IR Transmitter as output
-	DDRD |= (1 << PD6);
+	DDRD SET(PD6);
 	// Set IR Receiver as input
-	DDRC &= ~(1 << PC5);
+	DDRC CLR(PC5);
 	// Set internal pull-up for IR Receiver
-	PORTC |= (1 << PC5);
+	PORTC SET(PC5);
 	
 	_delay_ms(100);
 	
@@ -153,9 +153,9 @@ int main(void)
 			}
 			case 2:
 			{
-				PORTB |= (1 << PB1);
+				PORTB SET(PB1);
 				send_data(mario);
-				PORTB &= ~(1 << PB1);
+				PORTB CLR(PB1);
 				break;
 			}
 			case 3:
@@ -305,12 +305,12 @@ void checkButtons(void)
 
 void rightButtonPressed(void)
 {
-	PORTD ^= (1 << PD0);
+	PORTD FLIP(PD0);
 }
 
 void leftButtonPressed(void)
 {
-	//PORTB ^= (1 << PB0);
+	//PORTB FLIP(PB0);
 }
 
 void checkLeftButton(void)
@@ -458,9 +458,9 @@ void show_error(uint8_t code, uint8_t subCode)
 {
 	while(code--)
 	{
-		PORTD |= (1 << PD2);
+		PORTD SET(PD2);
 		_delay_ms(250);
-		PORTD &= ~(1 << PD2);
+		PORTD CLR(PD2);
 		_delay_ms(250);
 	}
 	_delay_ms(500);
@@ -468,16 +468,16 @@ void show_error(uint8_t code, uint8_t subCode)
 	uint8_t lesser = subCode % 10;
 	while(bigger--)
 	{
-		PORTB |= (1 << PB0);
+		PORTB SET(PB0);
 		_delay_ms(250);
-		PORTB &= ~(1 << PB0);
+		PORTB CLR(PB0);
 		_delay_ms(250);
 	}
 	while (lesser--)
 	{
-		PORTB |= (1 << PB1);
+		PORTB SET(PB1);
 		_delay_ms(250);
-		PORTB &= ~(1 << PB1);
+		PORTB CLR(PB1);
 		_delay_ms(250);
 	}
 	_delay_ms(1000);
@@ -614,9 +614,9 @@ void sendIR(int ir_cycles)
 	while(ir_cycles--)
 	{
 		//TODO: Extract these into macros
-		PORTD |= (1 << PD6);
+		PORTD SET(PD6);
 		_delay_us(10);
-		PORTD &= ~(1 << PD6);
+		PORTD CLR(PD6);
 		_delay_us(10);
 	}
 	// Turn background interrupts back on
@@ -766,10 +766,10 @@ void play_tone(int tone, long tempo_value)
 	long tempo_position = 0;
 	while (tempo_position < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
-		PORTD |= (1 << PD5);
+		PORTD SET(PD5);
 		delay_us(tone / 2);
 		
-		PORTD &= ~(1 << PD5);
+		PORTD CLR(PD5);
 		delay_us(tone / 2);
 		
 		tempo_position += tone;
