@@ -19,6 +19,8 @@
 #define SET(x) |= (1 << x)
 #define CLR(x) &= ~(1 << x)
 #define FLIP(x) ^= (1 << x)
+#define PINMODE_OUTPUT(x) |= (1 << x)
+#define PINMODE_INPUT(x) &= ~(1 << x)
 #define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
 #define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
 #define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
@@ -96,21 +98,21 @@ uint8_t state = 0;
 int main(void)
 {
 	// Set RGB LEDs as output
-	DDRD SET(PD0); // blue
-	DDRD SET(PD1); // green
-	DDRD SET(PD2); // red
-	DDRB SET(PB0); // red
-	DDRB SET(PB1); // green
-	DDRB SET(PB2); // blue
+	DDRD PINMODE_OUTPUT(PD0); // blue
+	DDRD PINMODE_OUTPUT(PD1); // green
+	DDRD PINMODE_OUTPUT(PD2); // red
+	DDRB PINMODE_OUTPUT(PB0); // red
+	DDRB PINMODE_OUTPUT(PB1); // green
+	DDRB PINMODE_OUTPUT(PB2); // blue
 	// Set buttons as input
-	DDRD CLR(PD3);
-	DDRD CLR(PD7);
+	DDRD PINMODE_INPUT(PD3);
+	DDRD PINMODE_INPUT(PD7);
 	// Set speaker as output
-	DDRD SET(PD5);
+	DDRD PINMODE_OUTPUT(PD5);
 	// Set IR Transmitter as output
-	DDRD SET(PD6);
+	DDRD PINMODE_OUTPUT(PD6);
 	// Set IR Receiver as input
-	DDRC CLR(PC5);
+	DDRC PINMODE_INPUT(PC5);
 	// Set internal pull-up for IR Receiver
 	PORTC SET(PC5);
 	
@@ -200,8 +202,8 @@ void timer_init(void)
 	
 	// Timer 2
 	TCCR2 = (1 << WGM21)|(1 << CS20);
-	TIMSK |= (1 << OCIE2);
-	//OCR2 = 65;
+	//TIMSK |= (1 << OCIE2);
+	OCR2 = 65;
 	
 	// Turn on interrupts
 	sei();
@@ -209,12 +211,12 @@ void timer_init(void)
 
 void start_timer2(void)
 {
-	OCR2 = 65;
+	TIMSK SET(OCIE2);
 }
 
 void stop_timer2(void)
 {
-	OCR2 = 0;
+	TIMSK CLR(OCIE2);
 }
 
 ISR(TIMER0_OVF_vect)
@@ -320,7 +322,7 @@ void rightButtonPressed(void)
 
 void leftButtonPressed(void)
 {
-	//PORTB FLIP(PB0);
+	PORTB FLIP(PB0);
 }
 
 void checkLeftButton(void)
@@ -415,36 +417,34 @@ void getRightButtonReading(void)
 	rightButtonAvgTouchValOld = rightButtonReadingAvg[rightButtonReadingAvgIndex];
 }
 
-int readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
+uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
 {
 	uint8_t bitmask = (1 << pinNumber);
 
 	// set to low
 	*port &= ~(bitmask);
 	// set to output
-	*ddr |= bitmask;
+	*ddr |= (bitmask);
 	_delay_ms(1);
 	// No background interrupts
 	cli();
 	// Make pin input with pull-up on
 	*ddr &= ~(bitmask);
-	*port |= bitmask;
+	*port |= (bitmask);
 	
 	// Check to see how long the pin stays high
 	// Manual if statements instead of a loop to decrease hardware cycles between each read of the pin and increase sensitivity as a result
-	
 	uint8_t cycles = 17;
-	if (*pin & bitmask) { cycles = 0; }
-	else if (*pin & bitmask) { cycles = 0; }
-	else if (*pin & bitmask) { cycles = 1; }
-	else if (*pin & bitmask) { cycles = 2; }
-	else if (*pin & bitmask) { cycles = 3; }
-	else if (*pin & bitmask) { cycles = 4; }
-	else if (*pin & bitmask) { cycles = 5; }
-	else if (*pin & bitmask) { cycles = 6; }
-	else if (*pin & bitmask) { cycles = 7; }
-	else if (*pin & bitmask) { cycles = 8; }
-	else if (*pin & bitmask) { cycles = 9; }
+		 if (*pin & bitmask) { cycles =  0; }
+	else if (*pin & bitmask) { cycles =  1; }
+	else if (*pin & bitmask) { cycles =  2; }
+	else if (*pin & bitmask) { cycles =  3; }
+	else if (*pin & bitmask) { cycles =  4; }
+	else if (*pin & bitmask) { cycles =  5; }
+	else if (*pin & bitmask) { cycles =  6; }
+	else if (*pin & bitmask) { cycles =  7; }
+	else if (*pin & bitmask) { cycles =  8; }
+	else if (*pin & bitmask) { cycles =  9; }
 	else if (*pin & bitmask) { cycles = 10; }
 	else if (*pin & bitmask) { cycles = 11; }
 	else if (*pin & bitmask) { cycles = 12; }
@@ -459,7 +459,7 @@ int readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile ui
 	// Discharge the pin by setting it to low and output
 	// Extremely important to pull these back down, otherwise you cannot use this on multiple pins
 	*port &= ~(bitmask);
-	*ddr |= bitmask;
+	*ddr |= (bitmask);
 	
 	return cycles;
 }
