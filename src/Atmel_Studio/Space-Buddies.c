@@ -190,6 +190,7 @@ timer_init();
 void timer_init(void)
 {
 	// Timer 0
+	TCCR0
 	TCCR0 |= (1 << CS01)|(1 << CS00);
 	TIMSK |= (1 << TOIE0);
 	

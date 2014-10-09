@@ -57,3 +57,4 @@ void send_data(volatile uint8_t *pByte);
 uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
 void start_timer2(void);
 void stop_timer2(void);
+unsigned long millis(void);
