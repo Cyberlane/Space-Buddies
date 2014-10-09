@@ -201,7 +201,7 @@ void timer_init(void)
 	// Timer 2
 	TCCR2 = (1 << WGM21)|(1 << CS20);
 	TIMSK |= (1 << OCIE2);
-	OCR2 = 65;
+	//OCR2 = 65;
 	
 	// Turn on interrupts
 	sei();
