@@ -207,6 +207,16 @@ void timer_init(void)
 	sei();
 }
 
+void start_timer2(void)
+{
+	OCR2 = 65;
+}
+
+void stop_timer2(void)
+{
+	OCR2 = 0;
+}
+
 ISR(TIMER0_OVF_vect)
 {
 	// copy these to local variables so they can be stored in registers
