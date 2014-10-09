@@ -5,7 +5,6 @@
  *  Author: Justin Nel
  */ 
 
-
 #define F_CPU 8000000UL
 
 #include <avr/io.h>
@@ -16,21 +15,23 @@
 #include "Space-Tunes.h"
 #include "SoftPWM.h"
 
-#define MAXPULSE 65000
-
+// Generic
 #define SET(x) |= (1 << x)
 #define CLR(x) &= ~(1 << x)
+#define FLIP(x) ^= (1 << x)
+#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
+#define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
+#define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
+#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
+#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
+#define FRACT_MAX (1000 >> 3)
+volatile unsigned long timer0_overflow_count = 0;
+volatile unsigned long timer0_millis = 0;
+static unsigned char timer0_fract = 0;
 
-long vel = 10000/1.25;
-
-/*
-	State Summary:
-	0: check for data
-	1: read data
-	2: send data
-	3: play tune
-*/
-uint8_t state = 0;
+// Infrared
+#define MAXPULSE 65000
+#define IR_RESOLUTION 16
 volatile uint16_t currentPulse = 0;
 volatile uint16_t highpulse = 0;
 volatile uint16_t lowpulse = 0;
@@ -39,7 +40,8 @@ volatile uint8_t currentBit = 0;
 volatile uint8_t currentByte = 0;
 uint8_t crc = 0;
 
-
+// Audio
+long vel = 10000/1.25;
 
 // Button Config only
 #define BUTTON_NUM_READINGS 5
@@ -69,59 +71,27 @@ uint8_t leftButtonReadingAvgIndex = 0;
 float leftButtonReadingAvg[BUTTON_NUM_AVGS];
 uint8_t leftButtonTotal = 0;
 
+// Software PWM
+volatile uint8_t red = 180;
+volatile uint8_t green = 255;
+volatile uint8_t blue = 255;
+volatile uint8_t cnt = 0;
 
-
-#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
-#define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
-#define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
-#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
-#define FRACT_MAX (1000 >> 3)
-
-volatile unsigned long timer0_overflow_count = 0;
-volatile unsigned long timer0_millis = 0;
-static unsigned char timer0_fract = 0;
-
-ISR(TIMER0_OVF_vect)
-{
-	// copy these to local variables so they can be stored in registers
-	// (volatile variables must be read from memory on every access)
-	unsigned long m = timer0_millis;
-	unsigned char f = timer0_fract;
-	
-	m += MILLIS_INC;
-	f += FRACT_INC;
-	if (f >= FRACT_MAX)
-	{
-		f -= FRACT_MAX;
-		m += 1;
-	}
-	
-	timer0_fract = f;
-	timer0_millis = m;
-	timer0_overflow_count++;
-}
-
-unsigned long millis()
-{
-	unsigned long m;
-	uint8_t oldSREG = SREG;
-	
-	// disable interrupts while we read timer0_millis or we might get an
-	// inconsistent value (e.g. in the middle of a write to timer0_millis)
-	cli();
-	m = timer0_millis;
-	SREG = oldSREG;
-	
-	return m;
-}
+/*
+	State Summary:
+	0: check buttons
+	1: read IR data
+	2: send IR data
+	3: save buffer to EEPROM
+	4: copy selected tune from EEPROM to buffer
+	5: play buffer
+*/
+uint8_t state = 0;
 
 //Untested: Migrate capactive touch logic from Arduino to AVR C
 //TODO: Need logic to set "current tune", toggled by button press
 //TODO: Move buffer into EEPROM when data is successful
 //TODO: Before each send, blink the current tune's LED colour
-
-unsigned long tick = 0;
 
 int main(void)
 {
@@ -159,8 +129,6 @@ int main(void)
 	for (int i = 0; i < 50; i++) {
 		buffer[i] = 0;
 	}
-	
-	//softpwm_init();
 	
 	//play(felix);
 	
@@ -217,30 +185,46 @@ int main(void)
     }
 }
 
-volatile uint8_t red = 180;
-volatile uint8_t green = 255;
-volatile uint8_t blue = 255;
-volatile uint8_t cnt = 0;
-
-void softpwm_init(void)
+void timer_init(void)
 {
-	PORTD SET(RED_L);
-	PORTB SET(RED_R);
-	PORTD SET(GREEN_L);
-	PORTB SET(GREEN_R);
-	PORTD SET(BLUE_L);
-	PORTB SET(BLUE_R);
+	// Timer 0
+	TCCR0 |= (1 << CS01)|(1 << CS00);
+	TIMSK |= (1 << TOIE0);
 	
-	// Put timer2 in CTC mode and clear other bits
-	TCCR2 = (1 << WGM21);
-	// Timer2 prescaling 8 and clearing other bits
-	TCCR2 = (1 << CS20);
-	// enable timer2 compare interrupt
+	// Timer 1
+	//TCCR1A = 0x00;
+	//TCCR1B |= (1 << WGM12)|(1 << CS11);
+	//TCNT1 = 0;
+	//OCR1A = 26;
+	//TIMSK |= (1 << OCIE1A);
+	
+	// Timer 2
+	TCCR2 = (1 << WGM21)|(1 << CS20);
 	TIMSK |= (1 << OCIE2);
-	// Counter x cycles before calling an interrupt
 	OCR2 = 65;
 	
+	// Turn on interrupts
 	sei();
+}
+
+ISR(TIMER0_OVF_vect)
+{
+	// copy these to local variables so they can be stored in registers
+	// (volatile variables must be read from memory on every access)
+	unsigned long m = timer0_millis;
+	unsigned char f = timer0_fract;
+	
+	m += MILLIS_INC;
+	f += FRACT_INC;
+	if (f >= FRACT_MAX)
+	{
+		f -= FRACT_MAX;
+		m += 1;
+	}
+	
+	timer0_fract = f;
+	timer0_millis = m;
+	timer0_overflow_count++;
 }
 
 ISR(TIMER2_COMP_vect)
@@ -275,29 +259,26 @@ ISR(TIMER2_COMP_vect)
 	}
 }
 
-void timer_init()
+unsigned long millis(void)
 {
-	// Timer 0
-	TCCR0 |= (1 << CS01)|(1 << CS00);
-	TIMSK |= (1 << TOIE0);
-	// Timer 1
-	//TCCR1A = 0x00;
-	//TCCR1B |= (1 << WGM12)|(1 << CS11);
-	//TCNT1 = 0;
-	//OCR1A = 26;
-	//TIMSK |= (1 << OCIE1A);
-	// Timer 2
+	unsigned long m;
+	uint8_t oldSREG = SREG;
 	
-	// Turn on interrupts
-	sei();
+	// disable interrupts while we read timer0_millis or we might get an
+	// inconsistent value (e.g. in the middle of a write to timer0_millis)
+	cli();
+	m = timer0_millis;
+	SREG = oldSREG;
+	
+	return m;
 }
 
-
-void move_selected_to_buffer()
+void move_selected_to_buffer(void)
 {
+	//TODO: Copy selected tune from EEPROM into buffer
 }
 
-void save_buffer()
+void save_buffer(void)
 {
     //TODO: Save buffer to eeprom
     /*
@@ -310,7 +291,7 @@ void save_buffer()
     state = 5;
 }
 
-void checkButtons()
+void checkButtons(void)
 {
 	checkLeftButton();
 	checkRightButton();
@@ -322,17 +303,17 @@ void checkButtons()
 	//}
 }
 
-void rightButtonPressed()
+void rightButtonPressed(void)
 {
 	PORTD ^= (1 << PD0);
 }
 
-void leftButtonPressed()
+void leftButtonPressed(void)
 {
 	//PORTB ^= (1 << PB0);
 }
 
-void checkLeftButton()
+void checkLeftButton(void)
 {
 	if (millis() - leftButtonTime > leftButtonDebounce)
 	{
@@ -358,7 +339,7 @@ void checkLeftButton()
 	}
 }
 
-void getLeftButtonReading()
+void getLeftButtonReading(void)
 {
 	leftButtonTotal -= leftButtonReadings[leftButtonReadingIndex];
 	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
@@ -378,7 +359,7 @@ void getLeftButtonReading()
 	leftButtonAvgTouchValOld = leftButtonReadingAvg[leftButtonReadingAvgIndex];
 }
 
-void checkRightButton()
+void checkRightButton(void)
 {
 	if (millis() - rightButtonTime > rightButtonDebounce)
 	{
@@ -404,7 +385,7 @@ void checkRightButton()
 	}
 }
 
-void getRightButtonReading()
+void getRightButtonReading(void)
 {
 	rightButtonTotal -= rightButtonReadings[rightButtonReadingIndex];
 	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(&DDRD, &PORTD, &PIND, PD3);
@@ -502,9 +483,7 @@ void show_error(uint8_t code, uint8_t subCode)
 	_delay_ms(1000);
 }
 
-#define IR_RESOLUTION 16
-
-void read_ir_data()
+void read_ir_data(void)
 {
 	currentBit = currentByte = 0;
 	
