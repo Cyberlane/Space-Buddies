@@ -13,28 +13,28 @@ AVRDUDE_PROGRAMMER = usbtiny
 #AVRDUDE_PORT =  /dev/cu.usbmodemfd111
 AVRDUDE_PORT = usb #usbtiny
 
-all:    begin gccversion \
-        space-buddies.hex \
-        finished end
+all:	begin gccversion \
+	space-buddies.hex \
+	finished end
         
 program-badge: space-buddies.hex
 
 # this is necessary if you're burning the AVR for the first time...
 # sets the proper fuse for 8MHz internal oscillator with no clk div
 burn-fuse:
-    $(AVRDUDE) $(AVRDUDE_FLAGS) -B 250 -u -U lfuse:w:0xE4:m -U hfuse:w:0xD9:m
+	$(AVRDUDE) $(AVRDUDE_FLAGS) -B 250 -u -U lfuse:w:0xe4:m -U hfuse:w:0xd9:m
     
 eeprom-read:
-    $(AVRDUDE) $(AVRDUDE_FLAGS) -B 5 -U eeprom:r:eeprom_sets/eeprom_read.hex:i
+	$(AVRDUDE) $(AVRDUDE_FLAGS) -B 5 -U eeprom:r:eeprom_sets/eeprom_read.hex:i
     
 eeprom-write:
-    $(AVRDUDE) $(AVRDUDE_FLAGS) -B 5 -U eeprom:w:eeprom_sets/eeprom_write.hex:i
+	$(AVRDUDE) $(AVRDUDE_FLAGS) -B 5 -U eeprom:w:eeprom_sets/eeprom_write.hex:i
     
 program-badge-id: program-badge
-    $(AVRDUDE) $(AVRDUDE_FLAGS) -B 10 -U eeprom:w:$(MY_ID):m
+	$(AVRDUDE) $(AVRDUDE_FLAGS) -B 10 -U eeprom:w:$(MY_ID):m
     
 program-%:
-    $(AVRDUDE) $(AVRDUDE_FLAGS) -B 1 $(AVRDUDE_WRITE_FLASH)$<
+	$(AVRDUDE) $(AVRDUDE_FLAGS) -B 1 $(AVRDUDE_WRITE_FLASH)$<
     
 FORMAT = ihex 		# create a .hex file
 OPT = s			# assembly-level optimization
@@ -84,7 +84,7 @@ AVRDUDE_FLAGS = -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER)
 # ---------------------------------------------------------------------------
 
 # Define directories, if needed.
-DIRAVR = C:/WinAVR-20100110
+DIRAVR = C:/winavr~1
 DIRAVRBIN = $(DIRAVR)/bin
 DIRAVRUTILS = $(DIRAVR)/utils/bin
 DIRINC = .
