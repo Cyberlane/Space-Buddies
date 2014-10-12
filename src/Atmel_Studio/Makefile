@@ -1,6 +1,6 @@
 MCU = atmega8
 
-F_CPU = 8000000         # 8 MHz
+F_CPU = 8000000L         # 8 MHz
 
 #AVRDUDE_PROGRAMMER = stk500v2
 AVRDUDE_PROGRAMMER = usbtiny
@@ -14,10 +14,10 @@ AVRDUDE_PROGRAMMER = usbtiny
 AVRDUDE_PORT = usb #usbtiny
 
 all:	begin gccversion \
-	space-buddies.hex \
+	Space-Buddies.hex \
 	finished end
         
-program-badge: space-buddies.hex
+program-badge: Space-Buddies.hex
 
 # this is necessary if you're burning the AVR for the first time...
 # sets the proper fuse for 8MHz internal oscillator with no clk div
@@ -185,6 +185,7 @@ clean_list :
 	$(REMOVE) *.obj
 	$(REMOVE) *.elf
 	$(REMOVE) *.o
+	$(REMOVE) .map
 
 # Listing of phony targets.
 .PHONY : all begin finish end clean clean_list program eeprom
