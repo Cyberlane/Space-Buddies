@@ -21,15 +21,6 @@
 #define FLIP(x) ^= (1 << x)
 #define PINMODE_OUTPUT(x) |= (1 << x)
 #define PINMODE_INPUT(x) &= ~(1 << x)
-#define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
-#define clockCyclesToMicroseconds(a) ( (a) / clockCyclesPerMicrosecond() )
-#define MICROSECONDS_PER_TIMER0_OVERFLOW (clockCyclesToMicroseconds(64 * 256))
-#define MILLIS_INC (MICROSECONDS_PER_TIMER0_OVERFLOW / 1000)
-#define FRACT_INC ((MICROSECONDS_PER_TIMER0_OVERFLOW % 1000) >> 3)
-#define FRACT_MAX (1000 >> 3)
-volatile unsigned long timer0_overflow_count = 0;
-volatile unsigned long timer0_millis = 0;
-static unsigned char timer0_fract = 0;
 
 // Infrared
 #define MAXPULSE 65000
@@ -44,34 +35,6 @@ uint8_t crc = 0;
 
 // Audio
 long vel = 10000/1.25;
-
-// Button Config only
-#define BUTTON_NUM_READINGS 5
-#define BUTTON_NUM_AVGS (BUTTON_NUM_READINGS + 1)
-unsigned long rightButtonDebounce = 0;
-unsigned long leftButtonDebounce = 0;
-// Right button - variables
-unsigned long rightButtonTime = 0;
-float rightButtonAvgTouchVal = 0;
-float rightButtonAvgTouchValOld = 0;
-bool rightButtonPinTouched = false;
-bool rightButtonPinTouchedOld = false;
-uint8_t rightButtonReadingIndex = 0;
-uint8_t rightButtonReadings[BUTTON_NUM_READINGS];
-uint8_t rightButtonReadingAvgIndex = 0;
-float rightButtonReadingAvg[BUTTON_NUM_AVGS];
-uint8_t rightButtonTotal = 0;
-// Left button - variables
-unsigned long leftButtonTime = 0;
-float leftButtonAvgTouchVal = 0;
-float leftButtonAvgTouchValOld = 0;
-bool leftButtonPinTouched = false;
-bool leftButtonPinTouchedOld = false;
-uint8_t leftButtonReadingIndex = 0;
-uint8_t leftButtonReadings[BUTTON_NUM_READINGS];
-uint8_t leftButtonReadingAvgIndex = 0;
-float leftButtonReadingAvg[BUTTON_NUM_AVGS];
-uint8_t leftButtonTotal = 0;
 
 // Software PWM
 volatile uint8_t red = 180;
@@ -118,22 +81,11 @@ int main(void)
 	
 	_delay_ms(100);
 	
-	for (int i = 0; i < BUTTON_NUM_READINGS; i++) {
-		leftButtonReadings[i] = 0;
-		rightButtonReadings[i] = 0;
-	}
-	for (int i = 0; i < BUTTON_NUM_AVGS; i++) {
-		leftButtonReadingAvg[i] = 0;
-		rightButtonReadingAvg[i] = 0;
-	}
 	for (int i = 0; i < 50; i++) {
 		buffer[i] = 0;
-}
+	}
 
-timer_init();
-	
-	//play(felix);
-	
+	timer_init();
     while(1)
     {
 		if (state != 0)
@@ -190,9 +142,8 @@ timer_init();
 void timer_init(void)
 {
 	// Timer 0
-	TCCR0
-	TCCR0 |= (1 << CS01)|(1 << CS00);
-	TIMSK |= (1 << TOIE0);
+	//TCCR0 |= (1 << CS01)|(1 << CS00);
+	//TIMSK |= (1 << TOIE0);
 	
 	// Timer 1
 	//TCCR1A = 0x00;
@@ -218,26 +169,6 @@ void start_timer2(void)
 void stop_timer2(void)
 {
 	TIMSK CLR(OCIE2);
-}
-
-ISR(TIMER0_OVF_vect)
-{
-	// copy these to local variables so they can be stored in registers
-	// (volatile variables must be read from memory on every access)
-	unsigned long m = timer0_millis;
-	unsigned char f = timer0_fract;
-	
-	m += MILLIS_INC;
-	f += FRACT_INC;
-	if (f >= FRACT_MAX)
-	{
-		f -= FRACT_MAX;
-		m += 1;
-	}
-	
-	timer0_fract = f;
-	timer0_millis = m;
-	timer0_overflow_count++;
 }
 
 ISR(TIMER2_COMP_vect)
@@ -272,20 +203,6 @@ ISR(TIMER2_COMP_vect)
 	}
 }
 
-unsigned long millis(void)
-{
-	unsigned long m;
-	uint8_t oldSREG = SREG;
-	
-	// disable interrupts while we read timer0_millis or we might get an
-	// inconsistent value (e.g. in the middle of a write to timer0_millis)
-	cli();
-	m = timer0_millis;
-	SREG = oldSREG;
-	
-	return m;
-}
-
 void move_selected_to_buffer(void)
 {
 	//TODO: Copy selected tune from EEPROM into buffer
@@ -306,8 +223,18 @@ void save_buffer(void)
 
 void checkButtons(void)
 {
-	checkLeftButton();
-	checkRightButton();
+	uint8_t leftButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD3);
+	uint8_t rightButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
+	if (leftButton >= 2){
+		//TODO: Add some type of debounce
+		leftButtonPressed();
+		_delay_ms(200);
+	}
+	if (rightButton >= 2){
+		//TODO: Add some type of debounce
+		rightButtonPressed();
+		_delay_ms(200);
+	}
 	//if (!(PINC & _BV(PC5)))
 	//{
 		//// If we see any incoming IR, escape button check mode
@@ -318,149 +245,33 @@ void checkButtons(void)
 
 void rightButtonPressed(void)
 {
-	PORTD FLIP(PD0);
+	PORTB FLIP(PB0);
 }
 
 void leftButtonPressed(void)
 {
-	PORTB FLIP(PB0);
-}
-
-void checkLeftButton(void)
-{
-	if (millis() - leftButtonTime > leftButtonDebounce)
-	{
-		getLeftButtonReading();
-		if (leftButtonAvgTouchVal - leftButtonAvgTouchValOld > 1.0)
-		{
-			leftButtonPinTouched = true;
-		}
-		else
-		{
-			leftButtonPinTouched = false;
-		}
-		if (leftButtonPinTouched == true && leftButtonPinTouchedOld == false)
-		{
-			leftButtonTime = millis();
-			leftButtonPressed();
-		}
-		else if (leftButtonPinTouched == false && leftButtonPinTouchedOld == true)
-		{
-			leftButtonTime = millis();
-		}
-		leftButtonPinTouchedOld = leftButtonPinTouched;
-	}
-}
-
-void getLeftButtonReading(void)
-{
-	leftButtonTotal -= leftButtonReadings[leftButtonReadingIndex];
-	leftButtonReadings[leftButtonReadingIndex] = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
-	leftButtonTotal += leftButtonReadings[leftButtonReadingIndex];
-	leftButtonReadingIndex++;
-	if (leftButtonReadingIndex >= BUTTON_NUM_READINGS)
-	{
-		leftButtonReadingIndex = 0;
-	}
-	leftButtonAvgTouchVal = (float)leftButtonTotal/BUTTON_NUM_READINGS;
-	leftButtonReadingAvg[leftButtonReadingAvgIndex] = leftButtonAvgTouchVal;
-	leftButtonReadingAvgIndex++;
-	if (leftButtonReadingAvgIndex >= BUTTON_NUM_AVGS)
-	{
-		leftButtonReadingAvgIndex++;
-	}
-	leftButtonAvgTouchValOld = leftButtonReadingAvg[leftButtonReadingAvgIndex];
-}
-
-void checkRightButton(void)
-{
-	if (millis() - rightButtonTime > rightButtonDebounce)
-	{
-		getRightButtonReading();
-		if (rightButtonAvgTouchVal - rightButtonAvgTouchValOld > 1.0)
-		{
-			rightButtonPinTouched = true;
-		}
-		else
-		{
-			rightButtonPinTouched = false;
-		}
-		if (rightButtonPinTouched == true && rightButtonPinTouchedOld == false)
-		{
-			rightButtonTime = millis();
-			rightButtonPressed();
-		}
-		else if (rightButtonPinTouched == false && rightButtonPinTouchedOld == true)
-		{
-			rightButtonTime = millis();
-		}
-		rightButtonPinTouchedOld = rightButtonPinTouched;
-	}
-}
-
-void getRightButtonReading(void)
-{
-	rightButtonTotal -= rightButtonReadings[rightButtonReadingIndex];
-	rightButtonReadings[rightButtonReadingIndex] = readCapacitivePin(&DDRD, &PORTD, &PIND, PD3);
-	rightButtonTotal += rightButtonReadings[rightButtonReadingIndex];
-	rightButtonReadingIndex++;
-	if (rightButtonReadingIndex >= BUTTON_NUM_READINGS)
-	{
-		rightButtonReadingIndex = 0;
-	}
-	rightButtonAvgTouchVal = (float)rightButtonTotal/BUTTON_NUM_READINGS;
-	rightButtonReadingAvg[rightButtonReadingAvgIndex] = rightButtonAvgTouchVal;
-	rightButtonReadingAvgIndex++;
-	if (rightButtonReadingAvgIndex >= BUTTON_NUM_AVGS)
-	{
-		rightButtonReadingAvgIndex++;
-	}
-	rightButtonAvgTouchValOld = rightButtonReadingAvg[rightButtonReadingAvgIndex];
+	PORTD FLIP(PD0);
 }
 
 uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
 {
-	uint8_t bitmask = (1 << pinNumber);
-
-	// set to low
+	uint8_t bitmask = 1 << pinNumber;
 	*port &= ~(bitmask);
-	// set to output
-	*ddr |= (bitmask);
+	*ddr |= bitmask;
 	_delay_ms(1);
-	// No background interrupts
-	cli();
-	// Make pin input with pull-up on
 	*ddr &= ~(bitmask);
-	*port |= (bitmask);
-	
-	// Check to see how long the pin stays high
-	// Manual if statements instead of a loop to decrease hardware cycles between each read of the pin and increase sensitivity as a result
-	uint8_t cycles = 17;
-		 if (*pin & bitmask) { cycles =  0; }
-	else if (*pin & bitmask) { cycles =  1; }
-	else if (*pin & bitmask) { cycles =  2; }
-	else if (*pin & bitmask) { cycles =  3; }
-	else if (*pin & bitmask) { cycles =  4; }
-	else if (*pin & bitmask) { cycles =  5; }
-	else if (*pin & bitmask) { cycles =  6; }
-	else if (*pin & bitmask) { cycles =  7; }
-	else if (*pin & bitmask) { cycles =  8; }
-	else if (*pin & bitmask) { cycles =  9; }
-	else if (*pin & bitmask) { cycles = 10; }
-	else if (*pin & bitmask) { cycles = 11; }
-	else if (*pin & bitmask) { cycles = 12; }
-	else if (*pin & bitmask) { cycles = 13; }
-	else if (*pin & bitmask) { cycles = 14; }
-	else if (*pin & bitmask) { cycles = 15; }
-	else if (*pin & bitmask) { cycles = 16; }
-	
-	// Turn background interrupts back on	
-	sei();
-	
-	// Discharge the pin by setting it to low and output
-	// Extremely important to pull these back down, otherwise you cannot use this on multiple pins
+	*port |= bitmask;
+	int cycles = 17;
+	for(int i = 0; i < 16; i++)
+	{
+		if (*pin & bitmask)
+		{
+			cycles = i;
+			break;
+		}
+	}
 	*port &= ~(bitmask);
-	*ddr |= (bitmask);
+	*ddr |= bitmask;
 	
 	return cycles;
 }
