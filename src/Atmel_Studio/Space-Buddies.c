@@ -33,14 +33,6 @@ volatile uint8_t currentBit = 0;
 volatile uint8_t currentByte = 0;
 uint8_t crc = 0;
 
-volatile uint8_t buffer2[] = {
-	NOTE(T_EX, 2),  NOTE(T_EX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_EX, 4),  NOTE(T_GX, 7),
-	NOTE(T_G, 7),   NOTE(T_CX, 6),  NOTE(T_G, 6),   NOTE(T_E, 6),   NOTE(T_A, 4),   NOTE(T_B, 4),
-	NOTE(T_BB, 2),  NOTE(T_A, 4),   NOTE(T_G, 3),   NOTE(T_EX, 3),  NOTE(T_GX, 3),  NOTE(T_AX, 4),
-	NOTE(T_FX, 2),  NOTE(T_GX, 4),  NOTE(T_EX, 4),  NOTE(T_CX, 2),  NOTE(T_DX, 2),  NOTE(T_B, 2),
-	NOTE(T_CX, 4),  END_MARKER
-};
-
 // Audio
 long vel = 10000;//1.25;
 
@@ -61,6 +53,8 @@ typedef struct {
 	uint8_t tune8[50];
 	uint8_t tune9[50];
 	uint8_t tune10[50];
+	uint8_t isInitialised;
+	uint8_t availableTunes[10];
 } tunes_t;
 
 tunes_t stored_tunes EEMEM = {
@@ -141,6 +135,11 @@ tunes_t stored_tunes EEMEM = {
 		NOTE(T_EX, 3), NOTE(T_EX, 1), NOTE(T_EBX, 1), NOTE(T_REST, 1), NOTE(T_CSX, 1),
 		NOTE(T_B, 3), NOTE(T_EX, 5), NOTE(T_EBX, 4), NOTE(T_REST, 5), NOTE(T_EX, 5),
 		NOTE(T_EBX, 4), NOTE(T_REST, 5), END_MARKER
+	},
+	.isInitialised = 0,
+	.availableTunes = {
+		0,0,0,0,0,
+		0,0,0,0,0
 	}
 };
 
@@ -154,11 +153,26 @@ tunes_t stored_tunes EEMEM = {
 	5: play buffer
 */
 uint8_t state = 0;
+uint8_t currentTune = 0; // 0-9
+uint8_t availableTunes[] = {1,0,0,0,0,0,0,0,0,0};
 
-//Untested: Migrate capactive touch logic from Arduino to AVR C
 //TODO: Need logic to set "current tune", toggled by button press
-//TODO: Move buffer into EEPROM when data is successful
 //TODO: Before each send, blink the current tune's LED colour
+
+void set_next_tune(void)
+{
+	//TODO: Copy from EEPROM to variable
+	uint8_t idx = 0;
+	while(1)
+	{
+		idx = (++currentTune) % 10;
+		if(availableTunes[idx])
+		{
+			currentTune = idx;
+			return;
+		}
+	}
+}
 
 int main(void)
 {
@@ -182,16 +196,9 @@ int main(void)
 	PORTC SET(PC5);
 	
 	_delay_ms(100);
-	
-	for (int i = 0; i < 50; i++) {
-		buffer[i] = 0;
-	}
-	
-	move_selected_to_buffer();
-	play(buffer);
-	PORTD ^= (1 << PD0);
-
+	clear_buffer();
 	timer_init();
+	
     while(1)
     {
 		if (state != 0)
@@ -247,22 +254,9 @@ int main(void)
 
 void timer_init(void)
 {
-	// Timer 0
-	//TCCR0 |= (1 << CS01)|(1 << CS00);
-	//TIMSK |= (1 << TOIE0);
-	
-	// Timer 1
-	//TCCR1A = 0x00;
-	//TCCR1B |= (1 << WGM12)|(1 << CS11);
-	//TCNT1 = 0;
-	//OCR1A = 26;
-	//TIMSK |= (1 << OCIE1A);
-	
 	// Timer 2
 	TCCR2 = (1 << WGM21)|(1 << CS20);
-	//TIMSK |= (1 << OCIE2);
 	OCR2 = 65;
-	
 	// Turn on interrupts
 	sei();
 }
@@ -323,8 +317,13 @@ void move_selected_to_buffer(void)
 
 void save_buffer(void)
 {
-    //TODO: Save buffer to eeprom
+	const uint8_t *ptr = stored_tunes.tune5;
+	for (uint8_t i = 0; i < 50; i++)
+	{
+		eeprom_write_byte(ptr++, buffer[i]);
+	}
     /*
+		TODO:
         First byte is index position (1-10)
         Last byte is crc
         Everything else is the tune!
@@ -332,6 +331,14 @@ void save_buffer(void)
     
     //TODO: Set current Tune to newly saved index
     state = 5;
+}
+
+void clear_buffer(void)
+{
+	for (uint8_t i = 0; i < 50; i++)
+	{
+		buffer[i] = 0;
+	}
 }
 
 void checkButtons(void)
@@ -576,6 +583,7 @@ void delay_us(uint16_t count)
 
 void play(volatile uint8_t *pByte)
 {
+	start_timer2();
 	while(*pByte != END_MARKER)
 	{
 		int tone = 0;
@@ -694,6 +702,7 @@ void play(volatile uint8_t *pByte)
 		}
 		++pByte;
 	}
+	stop_timer2();
 }
 
 void play_tone(int tone, long tempo_value)

@@ -44,9 +44,11 @@ enum {
 void timer_init(void);
 void sendIR(int cycles);
 void save_buffer(void);
+void clear_buffer(void);
 void play_tone(int tone, long tempo_value);
 void read_ir_data(void);
 void move_selected_to_buffer(void);
+void set_next_tune(void);
 void checkButtons(void);
 void play(volatile uint8_t *pByte);
 void send_data(volatile uint8_t *pByte);
