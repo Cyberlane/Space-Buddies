@@ -189,6 +189,7 @@ int main(void)
 	
 	move_selected_to_buffer();
 	play(buffer);
+	PORTD ^= (1 << PD0);
 
 	timer_init();
     while(1)
@@ -310,12 +311,13 @@ ISR(TIMER2_COMP_vect)
 
 void move_selected_to_buffer(void)
 {
-	const uint8_t *ptr = stored_tunes.tune1;
+	const uint8_t *ptr = stored_tunes.tune5;
 	uint8_t i = 0;
-	while (*ptr != END_MARKER)
+	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
-		buffer[i++] = eeprom_read_byte(ptr++);
+		buffer[i++] = data;
 	}
+	buffer[i] = END_MARKER;
 	//TODO: Copy selected tune from EEPROM into buffer
 }
 
