@@ -41,6 +41,7 @@ enum {
 	T_BX
 };
 
+void intialise_game(void);
 void timer_init(void);
 void sendIR(int cycles);
 void save_buffer(void);

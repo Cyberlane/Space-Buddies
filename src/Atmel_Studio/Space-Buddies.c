@@ -155,6 +155,37 @@ int main(void)
     }
 }
 
+void intialise_game(void)
+{
+	//TODO: Populate available tunes from EEPROM
+	uint8_t selected = 99;
+	uint8_t i = 0;
+	while(i < 10)
+	{
+		if (availableTunes[i])
+		{
+			selected = i;
+			break;
+		}
+		i++;
+	}
+	if (selected == 99)
+	{
+		// TODO: cycle through all the colours, and wait for any button press to select it
+		i = 0;
+		start_timer2();
+		while(1)
+		{
+			i = i % 10;
+			set_colour(&colors[i]);
+			//TODO: Detect button press without delay interrupting, and use that to select this tune
+			_delay_ms(20);
+		}
+		stop_timer2();
+	}
+	set_next_tune();
+}
+
 void timer_init(void)
 {
 	// Timer 2

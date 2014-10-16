@@ -17,68 +17,15 @@ typedef struct {
 	uint8_t blue;
 } colors_codes_t;
 
-typedef struct {
-	colors_codes_t color1;
-	colors_codes_t color2;
-	colors_codes_t color3;
-	colors_codes_t color4;
-	colors_codes_t color5;
-	colors_codes_t color6;
-	colors_codes_t color7;
-	colors_codes_t color8;
-	colors_codes_t color9;
-	colors_codes_t color10;
-} color_values_t;
-
 colors_codes_t colours[10] = {
-	{ // white
-		.red = 0,
-		.blue = 0,
-		green = 0
-	},
-	{ // violet
-		.red = 0,
-		.blue = 100,
-		.green = 200
-	},
-	{ // aqua
-		.red = 200,
-		.blue = 100,
-		.green = 0
-	},
-	{ // baby blue
-		.red = 200,
-		.blue = 0,
-		.green = 100
-	},
-	{ // green/blue
-		.red = 50,
-		.blue = 200,
-		.green = 50
-	},
-	{ // pink
-		.red = 0,
-		.blue = 240,
-		.green = 240
-	},
-	{ // red
-		.red = 0,
-		.blue = 255,
-		.green = 255
-	},
-	{ // kryptonite green
-		.red = 240,
-		.blue = 240,
-		.green = 0
-	},
-	{ // blue
-		.red = 255,
-		.blue = 0,
-		.green = 255
-	},
-	{ // green
-		.red = 255,
-		.blue = 255,
-		.green = 0
-	}
+	{ 0, 0, 0 }, // white
+	{ 0, 100, 200 }, // violet
+	{ 200, 100, 0 }, // aqua
+	{ 200, 0, 100 }, // baby blue
+	{ 50, 200, 50 }, // green/blue
+	{ 0, 240, 240 }, // pink
+	{ 0, 255, 255 }, // red
+	{ 240, 240, 0 }, // kryptonite green
+	{ 255, 0, 255 }, // blue
+	{ 255, 255, 0 } // green
 };
