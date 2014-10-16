@@ -105,6 +105,12 @@
     <Compile Include="Space-Buddies.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="Space-Colours.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="Space-Tunes.h">
+      <SubType>compile</SubType>
+    </Compile>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>
