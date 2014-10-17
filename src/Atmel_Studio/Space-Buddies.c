@@ -38,6 +38,8 @@ uint8_t crc = 0;
 // Audio
 long vel = 10000;//1.25;
 
+volatile uint8_t anyButtonPressed = 0;
+volatile uint8_t checkForButtonPress = 0;
 
 /*
 	State Summary:
@@ -50,7 +52,7 @@ long vel = 10000;//1.25;
 */
 uint8_t state = 0;
 uint8_t currentTune = 0; // 0-9
-uint8_t availableTunes[] = {1,0,0,0,0,0,0,0,0,0};
+uint8_t availableTunes[] = {0,0,0,0,0,0,0,0,0,0};
 
 //TODO: Need logic to set "current tune", toggled by button press
 //TODO: Before each send, blink the current tune's LED colour
@@ -58,6 +60,7 @@ uint8_t availableTunes[] = {1,0,0,0,0,0,0,0,0,0};
 void set_next_tune(void)
 {
 	//TODO: Copy from EEPROM to variable
+	PORTD |= (1 << PD0);
 	uint8_t idx = 0;
 	while(1)
 	{
@@ -68,6 +71,7 @@ void set_next_tune(void)
 			return;
 		}
 	}
+	PORTB |= (1 << PB0);
 }
 
 void set_colour(volatile colors_codes_t *codes)
@@ -101,6 +105,7 @@ int main(void)
 	_delay_ms(100);
 	clear_buffer();
 	timer_init();
+	intialise_game();
 	
     while(1)
     {
@@ -160,6 +165,7 @@ void intialise_game(void)
 	//TODO: Populate available tunes from EEPROM
 	uint8_t selected = 99;
 	uint8_t i = 0;
+	
 	while(i < 10)
 	{
 		if (availableTunes[i])
@@ -171,19 +177,30 @@ void intialise_game(void)
 	}
 	if (selected == 99)
 	{
-		// TODO: cycle through all the colours, and wait for any button press to select it
 		i = 0;
+		anyButtonPressed = 0;
+		checkForButtonPress = 1;
+		PORTD CLR(PD5);
 		start_timer2();
 		while(1)
 		{
 			i = i % 10;
-			set_colour(&colors[i]);
-			//TODO: Detect button press without delay interrupting, and use that to select this tune
-			_delay_ms(20);
+			set_colour(&colours[i]);
+			_delay_ms(5);
+			if (anyButtonPressed)
+			{
+				break;
+			}
+			i++;
 		}
 		stop_timer2();
+		availableTunes[i] = 1;
 	}
+	_delay_ms(500);
 	set_next_tune();
+	move_selected_to_buffer();
+	play(buffer);
+	clear_buffer();
 }
 
 void timer_init(void)
@@ -203,6 +220,12 @@ void start_timer2(void)
 void stop_timer2(void)
 {
 	TIMSK CLR(OCIE2);
+	PORTD CLR(RED_L);
+	PORTB CLR(RED_R);
+	PORTD CLR(BLUE_L);
+	PORTB CLR(BLUE_R);
+	PORTD CLR(GREEN_L);
+	PORTB CLR(GREEN_R);
 }
 
 ISR(TIMER2_COMP_vect)
@@ -235,11 +258,56 @@ ISR(TIMER2_COMP_vect)
 		PORTD CLR(BLUE_L);
 		PORTB CLR(BLUE_R);
 	}
+	
+	if (cnt == 0 && checkForButtonPress == 1 && anyButtonPressed == 0)
+	{
+		if (readCapacitivePin(&DDRD, &PORTD, &PIND, PD3) >= 2)
+		{
+			anyButtonPressed = 1;
+		}
+	}
+}
+
+ISR(TIMER2_OVF_vect)
+{
 }
 
 void move_selected_to_buffer(void)
 {
-	const uint8_t *ptr = stored_tunes.tune5;
+	const uint8_t *ptr;
+	switch (currentTune)
+	{
+		case 0:
+		ptr = stored_tunes.tune1;
+		break;
+		case 1:
+		ptr = stored_tunes.tune2;
+		break;
+		case 2:
+		ptr = stored_tunes.tune3;
+		break;
+		case 3:
+		ptr = stored_tunes.tune4;
+		break;
+		case 4:
+		ptr = stored_tunes.tune5;
+		break;
+		case 5:
+		ptr = stored_tunes.tune6;
+		break;
+		case 6:
+		ptr = stored_tunes.tune7;
+		break;
+		case 7:
+		ptr = stored_tunes.tune8;
+		break;
+		case 8:
+		ptr = stored_tunes.tune9;
+		break;
+		case 9:
+		ptr = stored_tunes.tune10;
+		break;
+	}
 	uint8_t i = 0;
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
@@ -517,7 +585,7 @@ void delay_us(uint16_t count)
 
 void play(volatile uint8_t *pByte)
 {
-	start_timer2();
+	//start_timer2();
 	while(*pByte != END_MARKER)
 	{
 		int tone = 0;
@@ -636,7 +704,7 @@ void play(volatile uint8_t *pByte)
 		}
 		++pByte;
 	}
-	stop_timer2();
+	//stop_timer2();
 }
 
 void play_tone(int tone, long tempo_value)
