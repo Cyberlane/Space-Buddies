@@ -180,13 +180,12 @@ void intialise_game(void)
 		i = 0;
 		anyButtonPressed = 0;
 		checkForButtonPress = 1;
-		PORTD CLR(PD5);
 		start_timer2();
 		while(1)
 		{
 			i = i % 10;
 			set_colour(&colours[i]);
-			_delay_ms(5);
+			_delay_ms(200);
 			if (anyButtonPressed)
 			{
 				break;
@@ -197,6 +196,12 @@ void intialise_game(void)
 		availableTunes[i] = 1;
 	}
 	_delay_ms(500);
+	PORTD CLR(RED_L);
+	PORTB CLR(RED_R);
+	PORTD CLR(GREEN_L);
+	PORTB CLR(GREEN_R);
+	PORTD CLR(BLUE_L);
+	PORTB CLR(BLUE_R);
 	set_next_tune();
 	move_selected_to_buffer();
 	play(buffer);
@@ -206,7 +211,7 @@ void intialise_game(void)
 void timer_init(void)
 {
 	// Timer 2
-	TCCR2 = (1 << WGM21)|(1 << CS20);
+	TCCR2 = (1 << WGM21)|(1 << CS21);
 	OCR2 = 65;
 	// Turn on interrupts
 	sei();
@@ -220,12 +225,6 @@ void start_timer2(void)
 void stop_timer2(void)
 {
 	TIMSK CLR(OCIE2);
-	PORTD CLR(RED_L);
-	PORTB CLR(RED_R);
-	PORTD CLR(BLUE_L);
-	PORTB CLR(BLUE_R);
-	PORTD CLR(GREEN_L);
-	PORTB CLR(GREEN_R);
 }
 
 ISR(TIMER2_COMP_vect)
@@ -585,7 +584,7 @@ void delay_us(uint16_t count)
 
 void play(volatile uint8_t *pByte)
 {
-	//start_timer2();
+	start_timer2();
 	while(*pByte != END_MARKER)
 	{
 		int tone = 0;
@@ -704,7 +703,7 @@ void play(volatile uint8_t *pByte)
 		}
 		++pByte;
 	}
-	//stop_timer2();
+	stop_timer2();
 }
 
 void play_tone(int tone, long tempo_value)
