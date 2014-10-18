@@ -54,12 +54,10 @@ uint8_t state = 0;
 uint8_t currentTune = 0; // 0-9
 uint8_t availableTunes[] = {0,0,0,0,0,0,0,0,0,0};
 
-//TODO: Need logic to set "current tune", toggled by button press
 //TODO: Before each send, blink the current tune's LED colour
 
 void set_next_tune(void)
 {
-	//TODO: Copy from EEPROM to variable
 	PORTD |= (1 << PD0);
 	uint8_t idx = 0;
 	while(1)
@@ -109,11 +107,6 @@ int main(void)
 	
     while(1)
     {
-		if (state != 0)
-		{
-			state = 0;
-		}
-		
 		switch(state)
 		{
 			case 0:
@@ -128,9 +121,14 @@ int main(void)
 			}
 			case 2:
 			{
+				//TODO: Turn on some LEDs to signify data being sent (no PWM)
+				clear_buffer();
+				move_selected_to_buffer();
 				PORTB SET(PB1);
-				//send_data(mario);
+				send_data(buffer);
 				PORTB CLR(PB1);
+				state = 0;
+				_delay_ms(500);
 				break;
 			}
 			case 3:
@@ -143,6 +141,9 @@ int main(void)
 				move_selected_to_buffer();
 				// play(buffer);
 				send_data(buffer);
+				_delay_ms(1500);
+				send_data(buffer);
+				_delay_ms(1500);
 				break;
 			}
 			case 5:
@@ -160,9 +161,18 @@ int main(void)
     }
 }
 
+void load_available_tunes(void)
+{
+	const uint8_t *ptr = stored_tunes.availableTunes;
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		availableTunes[i] = eeprom_read_byte(ptr++);
+	}
+}
+
 void intialise_game(void)
 {
-	//TODO: Populate available tunes from EEPROM
+	load_available_tunes();
 	uint8_t selected = 99;
 	uint8_t i = 0;
 	
@@ -194,18 +204,32 @@ void intialise_game(void)
 		}
 		stop_timer2();
 		availableTunes[i] = 1;
+		save_available_tunes();
 	}
 	_delay_ms(500);
+	set_next_tune();
+	move_selected_to_buffer();
+	//play(buffer);
+	clear_leds();
+	clear_buffer();
+}
+
+void save_available_tunes(void)
+{
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		eeprom_update_byte((uint8_t*)&stored_tunes.availableTunes[i], availableTunes[i]);
+	}
+}
+
+void clear_leds(void)
+{
 	PORTD CLR(RED_L);
 	PORTB CLR(RED_R);
 	PORTD CLR(GREEN_L);
 	PORTB CLR(GREEN_R);
 	PORTD CLR(BLUE_L);
 	PORTB CLR(BLUE_R);
-	set_next_tune();
-	move_selected_to_buffer();
-	play(buffer);
-	clear_buffer();
 }
 
 void timer_init(void)
@@ -267,10 +291,6 @@ ISR(TIMER2_COMP_vect)
 	}
 }
 
-ISR(TIMER2_OVF_vect)
-{
-}
-
 void move_selected_to_buffer(void)
 {
 	const uint8_t *ptr;
@@ -313,16 +333,15 @@ void move_selected_to_buffer(void)
 		buffer[i++] = data;
 	}
 	buffer[i] = END_MARKER;
-	//TODO: Copy selected tune from EEPROM into buffer
 }
 
 void save_buffer(void)
 {
-	uint8_t *ptr = stored_tunes.tune5;
-	for (uint8_t i = 0; i < 50; i++)
-	{
-		eeprom_write_byte(ptr++, buffer[i]);
-	}
+	//uint8_t *ptr = stored_tunes.tune5;
+	//for (uint8_t i = 0; i < 50; i++)
+	//{
+		//eeprom_write_byte(ptr++, buffer[i]);
+	//}
     /*
 		TODO:
         First byte is index position (1-10)
@@ -342,36 +361,50 @@ void clear_buffer(void)
 	}
 }
 
+uint8_t pre_infrared_counter = 0;
+
 void checkButtons(void)
 {
+	if (!(PINC & _BV(PC5)))
+	{
+		state = 1;
+		return;
+	}
 	uint8_t leftButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD3);
-	uint8_t rightButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
 	if (leftButton >= 2){
 		//TODO: Add some type of debounce
 		leftButtonPressed();
 		_delay_ms(200);
 	}
+	if (!(PINC & _BV(PC5)))
+	{
+		state = 1;
+		return;
+	}
+	uint8_t rightButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
 	if (rightButton >= 2){
 		//TODO: Add some type of debounce
 		rightButtonPressed();
 		_delay_ms(200);
 	}
-	//if (!(PINC & _BV(PC5)))
-	//{
-		//// If we see any incoming IR, escape button check mode
-		////   Perhaps impl a counter to prevent stray data, however if adding that, auto-increase that number to first pulse count to prevent bad data escape!
-		//state = 1;
-	//}
 }
 
 void rightButtonPressed(void)
 {
-	PORTB FLIP(PB0);
+	// Select next tune and flash it's colours
+	set_next_tune();
+	set_colour(&colours[currentTune]);
+	start_timer2();
+	_delay_ms(500);
+	stop_timer2();
+	_delay_ms(100);
+	clear_leds();
 }
 
 void leftButtonPressed(void)
 {
-	PORTD FLIP(PD0);
+	// Send current tune
+	state = 2;
 }
 
 uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
@@ -704,6 +737,8 @@ void play(volatile uint8_t *pByte)
 		++pByte;
 	}
 	stop_timer2();
+	_delay_ms(10);
+	clear_leds();
 }
 
 void play_tone(int tone, long tempo_value)

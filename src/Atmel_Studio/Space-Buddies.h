@@ -59,3 +59,5 @@ void rightButtonPressed(void);
 void start_timer2(void);
 void stop_timer2(void);
 unsigned long millis(void);
+void save_available_tunes(void);
+void clear_leds(void);
