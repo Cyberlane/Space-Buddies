@@ -47,8 +47,7 @@ volatile uint8_t checkForButtonPress = 0;
 	1: read IR data
 	2: send IR data
 	3: save buffer to EEPROM
-	4: copy selected tune from EEPROM to buffer
-	5: play buffer
+	4: play buffer
 */
 uint8_t state = 0;
 uint8_t currentTune = 0; // 0-9
@@ -125,10 +124,10 @@ int main(void)
 				clear_buffer();
 				move_selected_to_buffer();
 				PORTB SET(PB1);
-				send_data(buffer);
+				send_data(currentTune, buffer);
 				PORTB CLR(PB1);
 				state = 0;
-				_delay_ms(500);
+				_delay_ms(1000);
 				break;
 			}
 			case 3:
@@ -137,16 +136,6 @@ int main(void)
 				break;
 			}
 			case 4:
-			{
-				move_selected_to_buffer();
-				// play(buffer);
-				send_data(buffer);
-				_delay_ms(1500);
-				send_data(buffer);
-				_delay_ms(1500);
-				break;
-			}
-			case 5:
 			{
 				play(buffer);
 				state = 0;
@@ -337,20 +326,52 @@ void move_selected_to_buffer(void)
 
 void save_buffer(void)
 {
-	//uint8_t *ptr = stored_tunes.tune5;
-	//for (uint8_t i = 0; i < 50; i++)
-	//{
-		//eeprom_write_byte(ptr++, buffer[i]);
-	//}
+	const uint8_t *ptr;
+	switch (buffer[0])
+	{
+		case 0:
+		ptr = stored_tunes.tune1;
+		break;
+		case 1:
+		ptr = stored_tunes.tune2;
+		break;
+		case 2:
+		ptr = stored_tunes.tune3;
+		break;
+		case 3:
+		ptr = stored_tunes.tune4;
+		break;
+		case 4:
+		ptr = stored_tunes.tune5;
+		break;
+		case 5:
+		ptr = stored_tunes.tune6;
+		break;
+		case 6:
+		ptr = stored_tunes.tune7;
+		break;
+		case 7:
+		ptr = stored_tunes.tune8;
+		break;
+		case 8:
+		ptr = stored_tunes.tune9;
+		break;
+		case 9:
+		ptr = stored_tunes.tune10;
+		break;
+	}
+	for (uint8_t i = 1; i < 50; i++)
+	{
+		eeprom_update_byte(ptr++, buffer[i-1]);
+	}
+	availableTunes[buffer[0]];
+	save_available_tunes();
     /*
-		TODO:
-        First byte is index position (1-10)
-        Last byte is crc
-        Everything else is the tune!
+		TODO: Last byte is crc
     */
     
     //TODO: Set current Tune to newly saved index
-    state = 5;
+    state = 4;
 }
 
 void clear_buffer(void)
@@ -561,8 +582,22 @@ void read_ir_data(void)
 	}
 }
 
-void send_data(volatile uint8_t *pByte)
+void send_data(volatile uint8_t index, volatile uint8_t *pByte)
 {
+	currentBit = 0;
+	while (currentBit < 8)
+	{
+		if (READ_BIT(index, currentBit) == 1)
+		{
+			sendIR(220);
+		}
+		else
+		{
+			sendIR(100);
+		}
+		_delay_us(250);
+		currentBit++;
+	}
 	while(*pByte != END_MARKER)
 	{
 		currentBit = 0;
@@ -576,7 +611,7 @@ void send_data(volatile uint8_t *pByte)
 			{
 				sendIR(100);
 			}
-			_delay_us(500);
+			_delay_us(250);
 			currentBit++;
 		}
 		++pByte;

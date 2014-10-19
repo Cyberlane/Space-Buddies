@@ -52,7 +52,7 @@ void move_selected_to_buffer(void);
 void set_next_tune(void);
 void checkButtons(void);
 void play(volatile uint8_t *pByte);
-void send_data(volatile uint8_t *pByte);
+void send_data(volatile uint8_t index, volatile uint8_t *pByte);
 uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
 void leftButtonPressed(void);
 void rightButtonPressed(void);
