@@ -362,10 +362,15 @@ void save_buffer(void)
 	}
 	for (uint8_t i = 1; i < 50; i++)
 	{
-		eeprom_update_byte(ptr++, buffer[i-1]);
+		eeprom_update_byte(ptr++, buffer[i]);
 	}
-	availableTunes[buffer[0]];
+	availableTunes[buffer[0]] = 1;
 	save_available_tunes();
+	for (uint8_t i = 0; i < 49; i++)
+	{
+		buffer[i] = buffer[i+1];
+	}
+	buffer[49] = 0;
     /*
 		TODO: Last byte is crc
     */
