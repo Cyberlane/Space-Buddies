@@ -50,7 +50,7 @@ uint8_t availableTunes[] = {0,0,0,0,0,0,0,0,0,0};
 
 void set_next_tune(void)
 {
-	PORTD |= (1 << PD0);
+	BLUE_L_ON();
 	uint8_t idx = 0;
 	while(1)
 	{
@@ -61,7 +61,7 @@ void set_next_tune(void)
 			return;
 		}
 	}
-	PORTB |= (1 << PB0);
+	BLUE_L_ON();
 }
 
 void set_colour(volatile colors_codes_t *codes)
@@ -74,23 +74,23 @@ void set_colour(volatile colors_codes_t *codes)
 int main(void)
 {
 	// Set RGB LEDs as output
-	DDRD |= (1 << PD0); // blue
-	DDRD |= (1 << PD1); // green
-	DDRD |= (1 << PD2); // red
-	DDRB |= (1 << PB0); // red
-	DDRB |= (1 << PB1); // green
-	DDRB |= (1 << PB2); // blue
+	BLUE_L_DDR |= (1 << BLUE_L);
+	GREEN_L_DDR |= (1 << GREEN_L);
+	RED_L_DDR |= (1 << GREEN_L);
+	RED_R_DDR |= (1 << RED_R);
+	GREEN_R_DDR |= (1 << GREEN_R);
+	BLUE_R_DDR |= (1 << BLUE_R);
 	// Set buttons as input
-	DDRD &= ~(1 << PD3);
-	DDRD &= ~(1 << PD7);
+	BUTTON_LEFT_DDR &= ~(1 << BUTTON_LEFT);
+	BUTTON_RIGHT_DDR &= ~(1 << BUTTON_RIGHT);
 	// Set speaker as output
-	DDRD |= (1 << PD5);
+	SPEAKER_DDR |= (1 << SPEAKER);
 	// Set IR Transmitter as output
-	DDRD |= (1 << PD6);
+	IR_TX_DDR |= (1 << IR_TX);
 	// Set IR Receiver as input
-	DDRC &= ~(1 << PC5);
+	IR_RX_DDR &= ~(1 << IR_RX);
 	// Set internal pull-up for IR Receiver
-	PORTC |= (1 << PC5);
+	IR_RX_ON();
 	
 	_delay_ms(100);
 	clear_buffer();
@@ -116,9 +116,7 @@ int main(void)
 				//TODO: Turn on some LEDs to signify data being sent (no PWM)
 				clear_buffer();
 				move_selected_to_buffer();
-				PORTB |= (1 << PB1);
 				send_data(currentTune, buffer);
-				PORTB &= ~(1 << PB1);
 				state = 0;
 				_delay_ms(1000);
 				break;
@@ -206,12 +204,12 @@ void save_available_tunes(void)
 
 void clear_leds(void)
 {
-	PORTD &= ~(1 << RED_L);
-	PORTB &= ~(1 << RED_R);
-	PORTD &= ~(1 << GREEN_L);
-	PORTB &= ~(1 << GREEN_R);
-	PORTD &= ~(1 << BLUE_L);
-	PORTB &= ~(1 << BLUE_R);
+	RED_L_OFF();
+	RED_R_OFF();
+	GREEN_L_OFF();
+	GREEN_R_OFF();
+	BLUE_L_OFF();
+	BLUE_R_OFF();
 }
 
 void timer_init(void)
@@ -239,34 +237,34 @@ ISR(TIMER2_COMP_vect)
 	
 	if (cnt > red)
 	{
-		PORTD |= (1 << RED_L);
-		PORTB |= (1 << RED_R);
+		RED_L_ON();
+		RED_R_ON();
 	} else {
-		PORTD &= ~(1 << RED_L);
-		PORTB &= ~(1 << RED_R);
+		RED_L_OFF();
+		RED_R_OFF();
 	}
 	
 	if (cnt > green)
 	{
-		PORTD |= (1 << GREEN_L);
-		PORTB |= (1 << GREEN_R);
+		GREEN_L_ON();
+		GREEN_R_ON();
 	} else {
-		PORTD &= ~(1 << GREEN_L);
-		PORTB &= ~(1 << GREEN_L);
+		GREEN_L_OFF();
+		GREEN_R_OFF();
 	}
 	
 	if (cnt > blue)
 	{
-		PORTD |= (1 << BLUE_L);
-		PORTB |= (1 << BLUE_R);
+		BLUE_L_ON();
+		BLUE_R_ON();
 	} else {
-		PORTD &= ~(1 << BLUE_L);
-		PORTB &= ~(1 << BLUE_R);
+		BLUE_L_OFF();
+		BLUE_R_OFF();
 	}
 	
 	if (cnt == 0 && checkForButtonPress == 1 && anyButtonPressed == 0)
 	{
-		if (readCapacitivePin(&DDRD, &PORTD, &PIND, PD3) >= 2)
+		if (readCapacitivePin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT) >= 2)
 		{
 			anyButtonPressed = 1;
 		}
@@ -275,40 +273,7 @@ ISR(TIMER2_COMP_vect)
 
 void move_selected_to_buffer(void)
 {
-	const uint8_t *ptr;
-	switch (currentTune)
-	{
-		case 0:
-		ptr = stored_tunes.tune1;
-		break;
-		case 1:
-		ptr = stored_tunes.tune2;
-		break;
-		case 2:
-		ptr = stored_tunes.tune3;
-		break;
-		case 3:
-		ptr = stored_tunes.tune4;
-		break;
-		case 4:
-		ptr = stored_tunes.tune5;
-		break;
-		case 5:
-		ptr = stored_tunes.tune6;
-		break;
-		case 6:
-		ptr = stored_tunes.tune7;
-		break;
-		case 7:
-		ptr = stored_tunes.tune8;
-		break;
-		case 8:
-		ptr = stored_tunes.tune9;
-		break;
-		case 9:
-		ptr = stored_tunes.tune10;
-		break;
-	}
+	const uint8_t *ptr = stored_tunes.tunes[currentTune];
 	uint8_t i = 0;
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
@@ -319,40 +284,7 @@ void move_selected_to_buffer(void)
 
 void save_buffer(void)
 {
-	const uint8_t *ptr;
-	switch (buffer[0])
-	{
-		case 0:
-		ptr = stored_tunes.tune1;
-		break;
-		case 1:
-		ptr = stored_tunes.tune2;
-		break;
-		case 2:
-		ptr = stored_tunes.tune3;
-		break;
-		case 3:
-		ptr = stored_tunes.tune4;
-		break;
-		case 4:
-		ptr = stored_tunes.tune5;
-		break;
-		case 5:
-		ptr = stored_tunes.tune6;
-		break;
-		case 6:
-		ptr = stored_tunes.tune7;
-		break;
-		case 7:
-		ptr = stored_tunes.tune8;
-		break;
-		case 8:
-		ptr = stored_tunes.tune9;
-		break;
-		case 9:
-		ptr = stored_tunes.tune10;
-		break;
-	}
+	const uint8_t *ptr = stored_tunes.tunes[buffer[0]];
 	for (uint8_t i = 1; i < 50; i++)
 	{
 		eeprom_update_byte(ptr++, buffer[i]);
@@ -384,23 +316,23 @@ uint8_t pre_infrared_counter = 0;
 
 void checkButtons(void)
 {
-	if (!(PINC & _BV(PC5)))
+	if (!IR_RX_READ())
 	{
 		state = 1;
 		return;
 	}
-	uint8_t leftButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD3);
+	uint8_t leftButton = readCapacitivePin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
 	if (leftButton >= 2){
 		//TODO: Add some type of debounce
 		leftButtonPressed();
 		_delay_ms(200);
 	}
-	if (!(PINC & _BV(PC5)))
+	if (!IR_RX_READ())
 	{
 		state = 1;
 		return;
 	}
-	uint8_t rightButton = readCapacitivePin(&DDRD, &PORTD, &PIND, PD7);
+	uint8_t rightButton = readCapacitivePin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
 	if (rightButton >= 2){
 		//TODO: Add some type of debounce
 		rightButtonPressed();
@@ -453,9 +385,9 @@ void show_error(uint8_t code, uint8_t subCode)
 {
 	while(code--)
 	{
-		PORTD |= (1 << PD2);
+		RED_L_ON();
 		_delay_ms(250);
-		PORTD &= ~(1 << PD2);
+		RED_L_OFF();
 		_delay_ms(250);
 	}
 	_delay_ms(500);
@@ -463,16 +395,16 @@ void show_error(uint8_t code, uint8_t subCode)
 	uint8_t lesser = subCode % 10;
 	while(bigger--)
 	{
-		PORTB |= (1 << PB0);
+		RED_R_ON();
 		_delay_ms(250);
-		PORTB &= ~(1 << PB0);
+		RED_R_OFF();
 		_delay_ms(250);
 	}
 	while (lesser--)
 	{
-		PORTB |= (1 << PB1);
+		GREEN_R_ON();
 		_delay_ms(250);
-		PORTB &= ~(1 << PB1);
+		GREEN_R_OFF();
 		_delay_ms(250);
 	}
 	_delay_ms(1000);
@@ -488,7 +420,7 @@ void read_ir_data(void)
 		highpulse = lowpulse = 0;
 		
 		// While pin is high
-		while(PINC & (1 << PC5))
+		while(IR_RX_READ())
 		{
 			highpulse++;
 			_delay_us(IR_RESOLUTION);
@@ -520,7 +452,7 @@ void read_ir_data(void)
 		}
 		
 		// While pin is low
-		while(!(PINC & _BV(PC5)))
+		while(!IR_RX_READ())
 		{
 			lowpulse++;
 			_delay_us(IR_RESOLUTION);
@@ -582,18 +514,11 @@ void read_ir_data(void)
 
 void send_data(volatile uint8_t index, volatile uint8_t *pByte)
 {
+	GREEN_R_ON();
 	currentBit = 0;
 	while (currentBit < 8)
 	{
-		if (READ_BIT(index, currentBit) == 1)
-		{
-			sendIR(220);
-		}
-		else
-		{
-			sendIR(100);
-		}
-		_delay_us(250);
+		send_bit(READ_BIT(index, currentBit));
 		currentBit++;
 	}
 	while(*pByte != END_MARKER)
@@ -601,19 +526,25 @@ void send_data(volatile uint8_t index, volatile uint8_t *pByte)
 		currentBit = 0;
 		while (currentBit < 8)
 		{
-			if (READ_BIT(*pByte, currentBit) == 1)
-			{
-				sendIR(220);
-			}
-			else
-			{
-				sendIR(100);
-			}
-			_delay_us(250);
+			send_bit(READ_BIT(*pByte, currentBit));
 			currentBit++;
 		}
 		++pByte;
 	}
+	GREEN_R_OFF();
+}
+
+void send_bit(uint8_t bit)
+{
+	if (bit == 1)
+	{
+		sendIR(220);
+	}
+	else
+	{
+		sendIR(100);
+	}
+	_delay_us(250);
 }
 
 void sendIR(int ir_cycles)
@@ -623,9 +554,9 @@ void sendIR(int ir_cycles)
 	while(ir_cycles--)
 	{
 		//TODO: Extract these into macros
-		PORTD |= (1 << PD6);
+		IR_TX_ON();
 		_delay_us(10);
-		PORTD &= ~(1 << PD6);
+		IR_TX_OFF();
 		_delay_us(10);
 	}
 	// Turn background interrupts back on
@@ -779,10 +710,10 @@ void play_tone(int tone, long tempo_value)
 	long tempo_position = 0;
 	while (tempo_position < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
-		PORTD |= (1 << PD5);
+		SPEAKER_ON();
 		delay_us(tone / 2);
 		
-		PORTD &= ~(1 << PD5);
+		SPEAKER_OFF();
 		delay_us(tone / 2);
 		
 		tempo_position += tone;
