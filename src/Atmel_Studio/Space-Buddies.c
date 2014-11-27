@@ -17,13 +17,6 @@
 #include "Space-Colours.h"
 #include "SoftPWM.h"
 
-// Generic
-#define SET(x) |= (1 << x)
-#define CLR(x) &= ~(1 << x)
-#define FLIP(x) ^= (1 << x)
-#define PINMODE_OUTPUT(x) |= (1 << x)
-#define PINMODE_INPUT(x) &= ~(1 << x)
-
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 16
@@ -81,23 +74,23 @@ void set_colour(volatile colors_codes_t *codes)
 int main(void)
 {
 	// Set RGB LEDs as output
-	DDRD PINMODE_OUTPUT(PD0); // blue
-	DDRD PINMODE_OUTPUT(PD1); // green
-	DDRD PINMODE_OUTPUT(PD2); // red
-	DDRB PINMODE_OUTPUT(PB0); // red
-	DDRB PINMODE_OUTPUT(PB1); // green
-	DDRB PINMODE_OUTPUT(PB2); // blue
+	DDRD |= (1 << PD0); // blue
+	DDRD |= (1 << PD1); // green
+	DDRD |= (1 << PD2); // red
+	DDRB |= (1 << PB0); // red
+	DDRB |= (1 << PB1); // green
+	DDRB |= (1 << PB2); // blue
 	// Set buttons as input
-	DDRD PINMODE_INPUT(PD3);
-	DDRD PINMODE_INPUT(PD7);
+	DDRD &= ~(1 << PD3);
+	DDRD &= ~(1 << PD7);
 	// Set speaker as output
-	DDRD PINMODE_OUTPUT(PD5);
+	DDRD |= (1 << PD5);
 	// Set IR Transmitter as output
-	DDRD PINMODE_OUTPUT(PD6);
+	DDRD |= (1 << PD6);
 	// Set IR Receiver as input
-	DDRC PINMODE_INPUT(PC5);
+	DDRC &= ~(1 << PC5);
 	// Set internal pull-up for IR Receiver
-	PORTC SET(PC5);
+	PORTC |= (1 << PC5);
 	
 	_delay_ms(100);
 	clear_buffer();
@@ -123,9 +116,9 @@ int main(void)
 				//TODO: Turn on some LEDs to signify data being sent (no PWM)
 				clear_buffer();
 				move_selected_to_buffer();
-				PORTB SET(PB1);
+				PORTB |= (1 << PB1);
 				send_data(currentTune, buffer);
-				PORTB CLR(PB1);
+				PORTB &= ~(1 << PB1);
 				state = 0;
 				_delay_ms(1000);
 				break;
@@ -213,12 +206,12 @@ void save_available_tunes(void)
 
 void clear_leds(void)
 {
-	PORTD CLR(RED_L);
-	PORTB CLR(RED_R);
-	PORTD CLR(GREEN_L);
-	PORTB CLR(GREEN_R);
-	PORTD CLR(BLUE_L);
-	PORTB CLR(BLUE_R);
+	PORTD &= ~(1 << RED_L);
+	PORTB &= ~(1 << RED_R);
+	PORTD &= ~(1 << GREEN_L);
+	PORTB &= ~(1 << GREEN_R);
+	PORTD &= ~(1 << BLUE_L);
+	PORTB &= ~(1 << BLUE_R);
 }
 
 void timer_init(void)
@@ -232,12 +225,12 @@ void timer_init(void)
 
 void start_timer2(void)
 {
-	TIMSK SET(OCIE2);
+	TIMSK |= (1 << OCIE2);
 }
 
 void stop_timer2(void)
 {
-	TIMSK CLR(OCIE2);
+	TIMSK &= ~(1 << OCIE2);
 }
 
 ISR(TIMER2_COMP_vect)
@@ -246,29 +239,29 @@ ISR(TIMER2_COMP_vect)
 	
 	if (cnt > red)
 	{
-		PORTD SET(RED_L);
-		PORTB SET(RED_R);
+		PORTD |= (1 << RED_L);
+		PORTB |= (1 << RED_R);
 	} else {
-		PORTD CLR(RED_L);
-		PORTB CLR(RED_R);
+		PORTD &= ~(1 << RED_L);
+		PORTB &= ~(1 << RED_R);
 	}
 	
 	if (cnt > green)
 	{
-		PORTD SET(GREEN_L);
-		PORTB SET(GREEN_R);
+		PORTD |= (1 << GREEN_L);
+		PORTB |= (1 << GREEN_R);
 	} else {
-		PORTD CLR(GREEN_L);
-		PORTB CLR(GREEN_L);
+		PORTD &= ~(1 << GREEN_L);
+		PORTB &= ~(1 << GREEN_L);
 	}
 	
 	if (cnt > blue)
 	{
-		PORTD SET(BLUE_L);
-		PORTB SET(BLUE_R);
+		PORTD |= (1 << BLUE_L);
+		PORTB |= (1 << BLUE_R);
 	} else {
-		PORTD CLR(BLUE_L);
-		PORTB CLR(BLUE_R);
+		PORTD &= ~(1 << BLUE_L);
+		PORTB &= ~(1 << BLUE_R);
 	}
 	
 	if (cnt == 0 && checkForButtonPress == 1 && anyButtonPressed == 0)
@@ -460,9 +453,9 @@ void show_error(uint8_t code, uint8_t subCode)
 {
 	while(code--)
 	{
-		PORTD SET(PD2);
+		PORTD |= (1 << PD2);
 		_delay_ms(250);
-		PORTD CLR(PD2);
+		PORTD &= ~(1 << PD2);
 		_delay_ms(250);
 	}
 	_delay_ms(500);
@@ -470,16 +463,16 @@ void show_error(uint8_t code, uint8_t subCode)
 	uint8_t lesser = subCode % 10;
 	while(bigger--)
 	{
-		PORTB SET(PB0);
+		PORTB |= (1 << PB0);
 		_delay_ms(250);
-		PORTB CLR(PB0);
+		PORTB &= ~(1 << PB0);
 		_delay_ms(250);
 	}
 	while (lesser--)
 	{
-		PORTB SET(PB1);
+		PORTB |= (1 << PB1);
 		_delay_ms(250);
-		PORTB CLR(PB1);
+		PORTB &= ~(1 << PB1);
 		_delay_ms(250);
 	}
 	_delay_ms(1000);
@@ -630,9 +623,9 @@ void sendIR(int ir_cycles)
 	while(ir_cycles--)
 	{
 		//TODO: Extract these into macros
-		PORTD SET(PD6);
+		PORTD |= (1 << PD6);
 		_delay_us(10);
-		PORTD CLR(PD6);
+		PORTD &= ~(1 << PD6);
 		_delay_us(10);
 	}
 	// Turn background interrupts back on
@@ -786,10 +779,10 @@ void play_tone(int tone, long tempo_value)
 	long tempo_position = 0;
 	while (tempo_position < tempo_value && tempo_value < 640000) // enters an infinite loop when tempo_value is a big value
 	{
-		PORTD SET(PD5);
+		PORTD |= (1 << PD5);
 		delay_us(tone / 2);
 		
-		PORTD CLR(PD5);
+		PORTD &= ~(1 << PD5);
 		delay_us(tone / 2);
 		
 		tempo_position += tone;
