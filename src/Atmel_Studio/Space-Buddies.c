@@ -20,12 +20,10 @@
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 16
-
-volatile uint8_t buffer[50];
-uint8_t crc = 0;
-
 // Audio
 #define vel 10000l;//1.25;
+
+uint8_t crc = 0;
 
 volatile uint8_t anyButtonPressed = 0;
 volatile uint8_t checkForButtonPress = 0;
@@ -88,7 +86,7 @@ int main(void)
 	IR_RX_ON();
 	
 	_delay_ms(100);
-	clear_buffer();
+//	clear_buffer();
 	timer_init();
 	intialise_game();
 	
@@ -109,21 +107,14 @@ int main(void)
 			case 2:
 			{
 				//TODO: Turn on some LEDs to signify data being sent (no PWM)
-				clear_buffer();
-				move_selected_to_buffer();
-				send_data(currentTune, buffer);
+				send_data(currentTune);
 				state = 0;
 				_delay_ms(1000);
 				break;
 			}
-			case 3:
-			{
-				save_buffer();
-				break;
-			}
 			case 4:
 			{
-				play(buffer);
+				play_tune(currentTune);
 				state = 0;
 				break;
 			}
@@ -183,10 +174,9 @@ void intialise_game(void)
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
-	move_selected_to_buffer();
 	//play(buffer);
 	clear_leds();
-	clear_buffer();
+	//clear_buffer();
 }
 
 void save_available_tunes(void)
@@ -266,45 +256,34 @@ ISR(TIMER2_COMP_vect)
 	}
 }
 
-void move_selected_to_buffer(void)
-{
-	const uint8_t *ptr = stored_tunes.tunes[currentTune];
-	uint8_t i = 0;
-	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
-	{
-		buffer[i++] = data;
-	}
-	buffer[i] = END_MARKER;
-}
+//void move_selected_to_buffer(void)
+//{
+	//const uint8_t *ptr = stored_tunes.tunes[currentTune];
+	//uint8_t i = 0;
+	//for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
+	//{
+		//buffer[i++] = data;
+	//}
+	//buffer[i] = END_MARKER;
+//}
 
-void save_buffer(void)
+void save_buffer(volatile uint8_t *pByte)
 {
-	const uint8_t *ptr = stored_tunes.tunes[buffer[0]];
-	for (uint8_t i = 1; i < 50; i++)
+	currentTune = *pByte;
+	const uint8_t *ptr = stored_tunes.tunes[currentTune];
+	while (*pByte != END_MARKER)
 	{
-		eeprom_update_byte(ptr++, buffer[i]);
+		eeprom_update_byte(*ptr++, *pByte++);
 	}
-	availableTunes[buffer[0]] = 1;
+	eeprom_update_byte(*ptr++, END_MARKER);
+	availableTunes[currentTune] = 1;
 	save_available_tunes();
-	for (uint8_t i = 0; i < 49; i++)
-	{
-		buffer[i] = buffer[i+1];
-	}
-	buffer[49] = 0;
     /*
 		TODO: Last byte is crc
     */
     
     //TODO: Set current Tune to newly saved index
     state = 4;
-}
-
-void clear_buffer(void)
-{
-	for (uint8_t i = 0; i < 50; i++)
-	{
-		buffer[i] = 0;
-	}
 }
 
 uint8_t pre_infrared_counter = 0;
@@ -407,6 +386,7 @@ void show_error(uint8_t code, uint8_t subCode)
 
 void read_ir_data(void)
 {
+	uint8_t buffer[50];
 	uint8_t currentBit = 0;
 	uint8_t currentByte = 0;
 	uint16_t currentPulse = 0;
@@ -442,7 +422,8 @@ void read_ir_data(void)
 					else
 					{
 						buffer[currentByte] = END_MARKER;
-						state = 3; // save buffer to eeprom
+						save_buffer(*buffer);
+						state = 4; // play current tune
 					}
 					currentPulse = 0;
 				}
@@ -468,7 +449,8 @@ void read_ir_data(void)
 					else
 					{
 						buffer[currentByte] = END_MARKER;
-						state = 3; // save buffer to eeprom
+						save_buffer(*buffer);
+						state = 4; // play current tune
 					}
 					currentPulse = 0;
 				}
@@ -511,29 +493,30 @@ void read_ir_data(void)
 	}
 }
 
-void send_data(volatile uint8_t index, volatile uint8_t *pByte)
+void send_data(volatile uint8_t index)
 {
 	GREEN_R_ON();
 	uint8_t currentBit = 0;
 	while (currentBit < 8)
 	{
-		send_bit(READ_BIT(index, currentBit));
+		send_IR_bit(READ_BIT(index, currentBit));
 		currentBit++;
 	}
-	while(*pByte != END_MARKER)
+	
+	const uint8_t *ptr = stored_tunes.tunes[currentTune];
+	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
 		currentBit = 0;
 		while (currentBit < 8)
 		{
-			send_bit(READ_BIT(*pByte, currentBit));
+			send_IR_bit(READ_BIT(data, currentBit));
 			currentBit++;
 		}
-		++pByte;
 	}
 	GREEN_R_OFF();
 }
 
-void send_bit(uint8_t bit)
+void send_IR_bit(uint8_t bit)
 {
 	if (bit == 1)
 	{
@@ -578,130 +561,135 @@ void delay_us(uint16_t count)
 	}
 }
 
-void play(volatile uint8_t *pByte)
+void play_tune(uint8_t currentTune)
 {
 	start_timer2();
-	while(*pByte != END_MARKER)
+	const uint8_t *ptr = stored_tunes.tunes[currentTune];
+	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
-		int tone = 0;
-		int duration = 0;
-		switch (GET_TONE(*pByte)) {
-			case T_C:
-			tone = 1911;
-			break;
-			case T_CS:
-			tone = 1804;
-			break;
-			case T_D:
-			tone = 1703;
-			break;
-			case T_EB:
-			tone = 1607;
-			break;
-			case T_E:
-			tone = 1517;
-			break;
-			case T_F:
-			tone = 1432;
-			break;
-			case T_FS:
-			tone = 1352;
-			break;
-			case T_G:
-			tone = 1276;
-			break;
-			case T_AB:
-			tone = 1204;
-			break;
-			case T_A:
-			tone = 1136;
-			break;
-			case T_BB:
-			tone = 1073;
-			break;
-			case T_B:
-			tone = 1012;
-			break;
-			case T_CX:
-			tone = 955;
-			break;
-			case T_CSX:
-			tone = 902;
-			break;
-			case T_DX:
-			tone = 851;
-			break;
-			case T_EBX:
-			tone = 803;
-			break;
-			case T_EX:
-			tone = 758;
-			break;
-			case T_FX:
-			tone = 716;
-			break;
-			case T_FSX:
-			tone = 676;
-			break;
-			case T_GX:
-			tone = 638;
-			break;
-			case T_ABX:
-			tone = 602;
-			break;
-			case T_AX:
-			tone = 568;
-			break;
-			case T_BBX:
-			tone = 536;
-			break;
-			case T_BX:
-			tone = 506;
-			break;
-			case T_REST:
-			tone = 0;
-			break;
-		}
-		switch (GET_DURATION(*pByte)) {
-			case 0:
-			duration = 2;
-			break;
-			case 1:
-			duration = 4;
-			break;
-			case 2:
-			duration = 6;
-			break;
-			case 3:
-			duration = 8;
-			break;
-			case 4:
-			duration = 12;
-			break;
-			case 5:
-			duration = 16;
-			break;
-			case 6:
-			duration = 18;
-			break;
-			case 7:
-			duration = 24;
-			break;
-		}
-		long tvalue = duration * vel;
-		if (tone == 0)
-		{
-			delay_us(tvalue);
-		}
-		else
-		{
-			play_tone(tone, tvalue);	
-		}
-		++pByte;
+		play_byte(data);
 	}
 	stop_timer2();
 	_delay_ms(10);
 	clear_leds();
+}
+
+void play_byte(uint8_t pByte)
+{
+	int tone = 0;
+	int duration = 0;
+	switch (GET_TONE(pByte)) {
+		case T_C:
+		tone = 1911;
+		break;
+		case T_CS:
+		tone = 1804;
+		break;
+		case T_D:
+		tone = 1703;
+		break;
+		case T_EB:
+		tone = 1607;
+		break;
+		case T_E:
+		tone = 1517;
+		break;
+		case T_F:
+		tone = 1432;
+		break;
+		case T_FS:
+		tone = 1352;
+		break;
+		case T_G:
+		tone = 1276;
+		break;
+		case T_AB:
+		tone = 1204;
+		break;
+		case T_A:
+		tone = 1136;
+		break;
+		case T_BB:
+		tone = 1073;
+		break;
+		case T_B:
+		tone = 1012;
+		break;
+		case T_CX:
+		tone = 955;
+		break;
+		case T_CSX:
+		tone = 902;
+		break;
+		case T_DX:
+		tone = 851;
+		break;
+		case T_EBX:
+		tone = 803;
+		break;
+		case T_EX:
+		tone = 758;
+		break;
+		case T_FX:
+		tone = 716;
+		break;
+		case T_FSX:
+		tone = 676;
+		break;
+		case T_GX:
+		tone = 638;
+		break;
+		case T_ABX:
+		tone = 602;
+		break;
+		case T_AX:
+		tone = 568;
+		break;
+		case T_BBX:
+		tone = 536;
+		break;
+		case T_BX:
+		tone = 506;
+		break;
+		case T_REST:
+		tone = 0;
+		break;
+	}
+	switch (GET_DURATION(pByte)) {
+		case 0:
+		duration = 2;
+		break;
+		case 1:
+		duration = 4;
+		break;
+		case 2:
+		duration = 6;
+		break;
+		case 3:
+		duration = 8;
+		break;
+		case 4:
+		duration = 12;
+		break;
+		case 5:
+		duration = 16;
+		break;
+		case 6:
+		duration = 18;
+		break;
+		case 7:
+		duration = 24;
+		break;
+	}
+	long tvalue = duration * vel;
+	if (tone == 0)
+	{
+		delay_us(tvalue);
+	}
+	else
+	{
+		play_tone(tone, tvalue);
+	}
 }
 
 void play_tone(int tone, long tempo_value)
