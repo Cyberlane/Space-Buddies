@@ -43,7 +43,10 @@ void intialise_game(void);
 void timer_init(void);
 void send_IR(int cycles);
 void send_IR_bit(uint8_t bit);
+
+void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode);
 void read_ir_data(void);
+
 void check_buttons(void);
 uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
 void left_button_pressed(void);
@@ -62,3 +65,5 @@ void save_buffer(volatile uint8_t *pByte);
 void play_tune(uint8_t currentTune);
 void play_byte(uint8_t pByte);
 void play_tone(int tone, long tempo_value);
+
+

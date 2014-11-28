@@ -370,7 +370,6 @@ void read_ir_data(void)
 		{
 			highpulse++;
 			_delay_us(IR_RESOLUTION);
-			
 			/*
 			If the pulse is too long, we have timed out
 			Either nothing was received or the code is finished
@@ -378,22 +377,7 @@ void read_ir_data(void)
 			*/
 			if (highpulse >= MAXPULSE)
 			{
-				if (currentPulse != 0)
-				{
-					if (currentBit != 0)
-					{
-						// bad data, escape!
-						show_error(1, currentByte);
-						state = 0; // check for buttons
-					}
-					else
-					{
-						buffer[currentByte] = END_MARKER;
-						save_buffer(*buffer);
-						state = 3; // play current tune
-					}
-					currentPulse = 0;
-				}
+				validate_buffer(currentPulse, currentBit, currentByte, *buffer, 1);
 				return;
 			}
 		}
@@ -405,22 +389,7 @@ void read_ir_data(void)
 			_delay_us(IR_RESOLUTION);
 			if (lowpulse >= MAXPULSE)
 			{
-				if (currentPulse != 0)
-				{
-					if (currentBit != 0)
-					{
-						// bad data, escape!
-						show_error(2, currentBit);
-						state = 0; // check for buttons
-					}
-					else
-					{
-						buffer[currentByte] = END_MARKER;
-						save_buffer(*buffer);
-						state = 3; // play current tune
-					}
-					currentPulse = 0;
-				}
+				validate_buffer(currentPulse, currentBit, currentByte, *buffer, 2);
 				return;
 			}
 		}
@@ -457,6 +426,25 @@ void read_ir_data(void)
 		}
 		
 		currentPulse++;
+	}
+}
+
+void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
+{
+	if (currentPulse != 0)
+	{
+		if (currentBit != 0)
+		{
+			// bad data, escape!
+			show_error(errorCode, currentBit);
+			state = 0; // check for buttons
+		}
+		else
+		{
+			buffer[currentByte] = END_MARKER;
+			save_buffer(*buffer);
+			state = 3; // play current tune
+		}
 	}
 }
 
