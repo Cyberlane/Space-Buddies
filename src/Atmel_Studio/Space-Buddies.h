@@ -47,7 +47,7 @@ void clear_buffer(void);
 void play_tone(int tone, long tempo_value);
 void read_ir_data(void);
 void move_selected_to_buffer(void);
-void set_next_tune(void);
+uint8_t find_next_tune(uint8_t currentTune);
 void checkButtons(void);
 void play(volatile uint8_t *pByte);
 void send_data(volatile uint8_t index, volatile uint8_t *pByte);

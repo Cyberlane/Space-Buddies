@@ -48,7 +48,7 @@ uint8_t availableTunes[] = {0,0,0,0,0,0,0,0,0,0};
 
 //TODO: Before each send, blink the current tune's LED colour
 
-void set_next_tune(void)
+uint8_t find_next_tune(uint8_t currentTune)
 {
 	BLUE_L_ON();
 	uint8_t idx = 0;
@@ -57,8 +57,7 @@ void set_next_tune(void)
 		idx = (++currentTune) % 10;
 		if(availableTunes[idx])
 		{
-			currentTune = idx;
-			return;
+			return idx;
 		}
 	}
 	BLUE_L_ON();
@@ -187,7 +186,7 @@ void intialise_game(void)
 		save_available_tunes();
 	}
 	_delay_ms(500);
-	set_next_tune();
+	currentTune = find_next_tune(currentTune);
 	move_selected_to_buffer();
 	//play(buffer);
 	clear_leds();
@@ -343,7 +342,7 @@ void checkButtons(void)
 void rightButtonPressed(void)
 {
 	// Select next tune and flash it's colours
-	set_next_tune();
+	currentTune = find_next_tune(currentTune);
 	set_colour(&colours[currentTune]);
 	start_timer2();
 	_delay_ms(500);
