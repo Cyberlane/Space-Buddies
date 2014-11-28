@@ -31,8 +31,7 @@ volatile uint8_t checkForButtonPress = 0;
 	0: check buttons
 	1: read IR data
 	2: send IR data
-	3: save buffer to EEPROM
-	4: play buffer
+	4: play current tune
 */
 uint8_t state = 0;
 uint8_t currentTune = 0; // 0-9
@@ -84,7 +83,6 @@ int main(void)
 	IR_RX_ON();
 	
 	_delay_ms(100);
-//	clear_buffer();
 	timer_init();
 	intialise_game();
 	
@@ -172,9 +170,8 @@ void intialise_game(void)
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
-	//play(buffer);
+	play_tune(currentTune);
 	clear_leds();
-	//clear_buffer();
 }
 
 void save_available_tunes(void)
@@ -254,17 +251,6 @@ ISR(TIMER2_COMP_vect)
 	}
 }
 
-//void move_selected_to_buffer(void)
-//{
-	//const uint8_t *ptr = stored_tunes.tunes[currentTune];
-	//uint8_t i = 0;
-	//for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
-	//{
-		//buffer[i++] = data;
-	//}
-	//buffer[i] = END_MARKER;
-//}
-
 void save_buffer(volatile uint8_t *pByte)
 {
 	currentTune = *pByte;
@@ -279,12 +265,8 @@ void save_buffer(volatile uint8_t *pByte)
     /*
 		TODO: Last byte is crc
     */
-    
-    //TODO: Set current Tune to newly saved index
     state = 4;
 }
-
-uint8_t pre_infrared_counter = 0;
 
 void check_buttons(void)
 {
@@ -295,7 +277,6 @@ void check_buttons(void)
 	}
 	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
 	if (leftButton >= 2){
-		//TODO: Add some type of debounce
 		left_button_pressed();
 		_delay_ms(200);
 	}
@@ -306,7 +287,6 @@ void check_buttons(void)
 	}
 	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
 	if (rightButton >= 2){
-		//TODO: Add some type of debounce
 		right_button_pressed();
 		_delay_ms(200);
 	}
