@@ -20,12 +20,11 @@
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 16
+
 volatile uint16_t currentPulse = 0;
 volatile uint16_t highpulse = 0;
 volatile uint16_t lowpulse = 0;
 volatile uint8_t buffer[50];
-volatile uint8_t currentBit = 0;
-volatile uint8_t currentByte = 0;
 uint8_t crc = 0;
 
 // Audio
@@ -411,7 +410,8 @@ void show_error(uint8_t code, uint8_t subCode)
 
 void read_ir_data(void)
 {
-	currentBit = currentByte = 0;
+	uint8_t currentBit = 0;
+	uint8_t currentByte = 0;
 	
 	while(1)
 	{
@@ -514,7 +514,7 @@ void read_ir_data(void)
 void send_data(volatile uint8_t index, volatile uint8_t *pByte)
 {
 	GREEN_R_ON();
-	currentBit = 0;
+	uint8_t currentBit = 0;
 	while (currentBit < 8)
 	{
 		send_bit(READ_BIT(index, currentBit));
