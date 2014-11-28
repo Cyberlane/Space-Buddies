@@ -377,7 +377,7 @@ void read_ir_data(void)
 			*/
 			if (highpulse >= MAXPULSE)
 			{
-				validate_buffer(currentPulse, currentBit, currentByte, *buffer, 1);
+				validate_buffer(currentPulse, currentBit, currentByte, buffer, 1);
 				return;
 			}
 		}
@@ -389,7 +389,7 @@ void read_ir_data(void)
 			_delay_us(IR_RESOLUTION);
 			if (lowpulse >= MAXPULSE)
 			{
-				validate_buffer(currentPulse, currentBit, currentByte, *buffer, 2);
+				validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
 				return;
 			}
 		}
@@ -442,7 +442,7 @@ void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentBy
 		else
 		{
 			buffer[currentByte] = END_MARKER;
-			save_buffer(*buffer);
+			save_buffer(buffer);
 			state = 3; // play current tune
 		}
 	}
