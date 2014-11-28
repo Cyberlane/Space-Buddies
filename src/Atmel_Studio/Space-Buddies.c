@@ -50,7 +50,7 @@ uint8_t find_next_tune(uint8_t currentTune)
 			return idx;
 		}
 	}
-	BLUE_L_ON();
+	BLUE_L_OFF();
 }
 
 void set_colour(volatile colors_codes_t *codes)
