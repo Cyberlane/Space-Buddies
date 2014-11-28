@@ -31,11 +31,10 @@ volatile uint8_t checkForButtonPress = 0;
 	0: check buttons
 	1: read IR data
 	2: send IR data
-	4: play current tune
+	3: play current tune
 */
 uint8_t state = 0;
 uint8_t currentTune = 0; // 0-9
-uint8_t availableTunes[] = {0,0,0,0,0,0,0,0,0,0};
 
 //TODO: Before each send, blink the current tune's LED colour
 
@@ -46,7 +45,7 @@ uint8_t find_next_tune(uint8_t currentTune)
 	while(1)
 	{
 		idx = (++currentTune) % 10;
-		if(availableTunes[idx])
+		if(get_tune_state(idx))
 		{
 			return idx;
 		}
@@ -123,24 +122,19 @@ int main(void)
     }
 }
 
-void load_available_tunes(void)
+uint8_t get_tune_state(uint8_t tuneNumber)
 {
-	const uint8_t *ptr = stored_tunes.availableTunes;
-	for (uint8_t i = 0; i < 10; i++)
-	{
-		availableTunes[i] = eeprom_read_byte(ptr++);
-	}
+	return eeprom_read_byte(stored_tunes.availableTunes[tuneNumber]);
 }
 
 void intialise_game(void)
 {
-	load_available_tunes();
 	uint8_t selected = 99;
 	uint8_t i = 0;
 	
 	while(i < 10)
 	{
-		if (availableTunes[i])
+		if (get_tune_state(i))
 		{
 			selected = i;
 			break;
@@ -165,8 +159,7 @@ void intialise_game(void)
 			i++;
 		}
 		stop_timer2();
-		availableTunes[i] = 1;
-		save_available_tunes();
+		make_tune_available(i);
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
@@ -174,12 +167,9 @@ void intialise_game(void)
 	clear_leds();
 }
 
-void save_available_tunes(void)
+void make_tune_available(uint8_t index)
 {
-	for (uint8_t i = 0; i < 10; i++)
-	{
-		eeprom_update_byte((uint8_t*)&stored_tunes.availableTunes[i], availableTunes[i]);
-	}
+	eeprom_update_byte((uint8_t*)&stored_tunes.availableTunes[index], 1);
 }
 
 void clear_leds(void)
@@ -260,12 +250,11 @@ void save_buffer(volatile uint8_t *pByte)
 		eeprom_update_byte(*ptr++, *pByte++);
 	}
 	eeprom_update_byte(*ptr++, END_MARKER);
-	availableTunes[currentTune] = 1;
-	save_available_tunes();
     /*
 		TODO: Last byte is crc
     */
-    state = 4;
+    make_tune_available(currentTune);
+    state = 3;
 }
 
 void check_buttons(void)
@@ -401,7 +390,7 @@ void read_ir_data(void)
 					{
 						buffer[currentByte] = END_MARKER;
 						save_buffer(*buffer);
-						state = 4; // play current tune
+						state = 3; // play current tune
 					}
 					currentPulse = 0;
 				}
@@ -428,7 +417,7 @@ void read_ir_data(void)
 					{
 						buffer[currentByte] = END_MARKER;
 						save_buffer(*buffer);
-						state = 4; // play current tune
+						state = 3; // play current tune
 					}
 					currentPulse = 0;
 				}
