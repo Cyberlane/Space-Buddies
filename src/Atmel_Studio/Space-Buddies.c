@@ -25,7 +25,7 @@ volatile uint8_t buffer[50];
 uint8_t crc = 0;
 
 // Audio
-long vel = 10000;//1.25;
+#define vel 10000l;//1.25;
 
 volatile uint8_t anyButtonPressed = 0;
 volatile uint8_t checkForButtonPress = 0;
@@ -319,7 +319,7 @@ void check_buttons(void)
 	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
 	if (leftButton >= 2){
 		//TODO: Add some type of debounce
-		leftButtonPressed();
+		left_button_pressed();
 		_delay_ms(200);
 	}
 	if (!IR_RX_READ())
@@ -330,12 +330,12 @@ void check_buttons(void)
 	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
 	if (rightButton >= 2){
 		//TODO: Add some type of debounce
-		rightButtonPressed();
+		right_button_pressed();
 		_delay_ms(200);
 	}
 }
 
-void rightButtonPressed(void)
+void right_button_pressed(void)
 {
 	// Select next tune and flash it's colours
 	currentTune = find_next_tune(currentTune);
@@ -347,7 +347,7 @@ void rightButtonPressed(void)
 	clear_leds();
 }
 
-void leftButtonPressed(void)
+void left_button_pressed(void)
 {
 	// Send current tune
 	state = 2;
