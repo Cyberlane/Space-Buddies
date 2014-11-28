@@ -21,9 +21,6 @@
 #define MAXPULSE 65000
 #define IR_RESOLUTION 16
 
-volatile uint16_t currentPulse = 0;
-volatile uint16_t highpulse = 0;
-volatile uint16_t lowpulse = 0;
 volatile uint8_t buffer[50];
 uint8_t crc = 0;
 
@@ -412,6 +409,9 @@ void read_ir_data(void)
 {
 	uint8_t currentBit = 0;
 	uint8_t currentByte = 0;
+	uint16_t currentPulse = 0;
+	uint16_t highpulse = 0;
+	uint16_t lowpulse = 0;
 	
 	while(1)
 	{
