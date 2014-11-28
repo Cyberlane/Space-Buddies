@@ -98,7 +98,7 @@ int main(void)
 		{
 			case 0:
 			{
-				checkButtons();
+				check_buttons();
 				break;
 			}
 			case 1:
@@ -259,7 +259,7 @@ ISR(TIMER2_COMP_vect)
 	
 	if (cnt == 0 && checkForButtonPress == 1 && anyButtonPressed == 0)
 	{
-		if (readCapacitivePin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT) >= 2)
+		if (read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT) >= 2)
 		{
 			anyButtonPressed = 1;
 		}
@@ -309,14 +309,14 @@ void clear_buffer(void)
 
 uint8_t pre_infrared_counter = 0;
 
-void checkButtons(void)
+void check_buttons(void)
 {
 	if (!IR_RX_READ())
 	{
 		state = 1;
 		return;
 	}
-	uint8_t leftButton = readCapacitivePin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
+	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
 	if (leftButton >= 2){
 		//TODO: Add some type of debounce
 		leftButtonPressed();
@@ -327,7 +327,7 @@ void checkButtons(void)
 		state = 1;
 		return;
 	}
-	uint8_t rightButton = readCapacitivePin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
+	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
 	if (rightButton >= 2){
 		//TODO: Add some type of debounce
 		rightButtonPressed();
@@ -353,7 +353,7 @@ void leftButtonPressed(void)
 	state = 2;
 }
 
-uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
+uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
 {
 	uint8_t bitmask = 1 << pinNumber;
 	*port &= ~(bitmask);
@@ -537,16 +537,16 @@ void send_bit(uint8_t bit)
 {
 	if (bit == 1)
 	{
-		sendIR(220);
+		send_IR(220);
 	}
 	else
 	{
-		sendIR(100);
+		send_IR(100);
 	}
 	_delay_us(250);
 }
 
-void sendIR(int ir_cycles)
+void send_IR(int ir_cycles)
 {
 	// Turn off background interrupts
 	cli();

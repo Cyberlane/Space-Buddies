@@ -41,19 +41,19 @@ enum {
 
 void intialise_game(void);
 void timer_init(void);
-void sendIR(int cycles);
+void send_IR(int cycles);
 void save_buffer(void);
 void clear_buffer(void);
 void play_tone(int tone, long tempo_value);
 void read_ir_data(void);
 void move_selected_to_buffer(void);
 uint8_t find_next_tune(uint8_t currentTune);
-void checkButtons(void);
+void check_buttons(void);
 void play(volatile uint8_t *pByte);
 void send_data(volatile uint8_t index, volatile uint8_t *pByte);
-uint8_t readCapacitivePin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
-void leftButtonPressed(void);
-void rightButtonPressed(void);
+uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
+void left_button_pressed(void);
+void right_button_pressed(void);
 void start_timer2(void);
 void stop_timer2(void);
 unsigned long millis(void);
