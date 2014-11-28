@@ -124,7 +124,7 @@ int main(void)
 
 uint8_t get_tune_state(uint8_t tuneNumber)
 {
-	return eeprom_read_byte(stored_tunes.availableTunes[tuneNumber]);
+	return eeprom_read_byte(&stored_tunes.availableTunes[tuneNumber]);
 }
 
 void intialise_game(void)
@@ -244,12 +244,12 @@ ISR(TIMER2_COMP_vect)
 void save_buffer(volatile uint8_t *pByte)
 {
 	currentTune = *pByte;
-	const uint8_t *ptr = stored_tunes.tunes[currentTune];
+	uint8_t *ptr = stored_tunes.tunes[currentTune];
 	while (*pByte != END_MARKER)
 	{
-		eeprom_update_byte(*ptr++, *pByte++);
+		eeprom_update_byte(ptr++, *pByte++);
 	}
-	eeprom_update_byte(*ptr++, END_MARKER);
+	eeprom_update_byte(ptr++, END_MARKER);
     /*
 		TODO: Last byte is crc
     */
