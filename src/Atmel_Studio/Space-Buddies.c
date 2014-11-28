@@ -23,8 +23,6 @@
 // Audio
 #define vel 10000l;//1.25;
 
-uint8_t crc = 0;
-
 volatile uint8_t anyButtonPressed = 0;
 volatile uint8_t checkForButtonPress = 0;
 
