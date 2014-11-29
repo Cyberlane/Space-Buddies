@@ -55,6 +55,9 @@ void start_timer2(void);
 void stop_timer2(void);
 void clear_leds(void);
 
+void show_error(uint8_t code, uint8_t subCode);
+void show_signal(uint16_t signal);
+
 uint8_t find_next_tune(uint8_t currentTune);
 uint8_t get_tune_state(uint8_t tuneNumber);
 void make_tune_available(uint8_t index);

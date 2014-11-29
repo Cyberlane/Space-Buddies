@@ -107,7 +107,7 @@ int main(void)
 				_delay_ms(1000);
 				break;
 			}
-			case 4:
+			case 3:
 			{
 				play_tune(currentTune);
 				state = 0;
@@ -163,7 +163,7 @@ void intialise_game(void)
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
-	play_tune(currentTune);
+	//play_tune(currentTune);
 	clear_leds();
 }
 
@@ -245,14 +245,38 @@ void save_buffer(volatile uint8_t *pByte)
 {
 	currentTune = *pByte;
 	uint8_t *ptr = stored_tunes.tunes[currentTune];
+	uint8_t ctr = 0;
 	while (*pByte != END_MARKER)
 	{
 		eeprom_update_byte(ptr++, *pByte++);
+		ctr++;
 	}
 	eeprom_update_byte(ptr++, END_MARKER);
     /*
 		TODO: Last byte is crc
     */
+	
+	uint8_t t = currentTune;
+	while(t--)
+	{
+		GREEN_L_ON();
+		GREEN_R_ON();
+		_delay_ms(500);
+		GREEN_L_OFF();
+		GREEN_R_OFF();
+		_delay_ms(500);
+	}
+	_delay_ms(1000);
+	while(ctr--)
+	{
+		RED_L_ON();
+		RED_R_ON();
+		_delay_ms(500);
+		RED_L_OFF();
+		RED_R_OFF();
+		_delay_ms(500);
+	}
+	
     make_tune_available(currentTune);
     state = 3;
 }
@@ -326,9 +350,9 @@ void show_error(uint8_t code, uint8_t subCode)
 {
 	while(code--)
 	{
-		RED_L_ON();
+		BLUE_R_ON();
 		_delay_ms(250);
-		RED_L_OFF();
+		BLUE_R_OFF();
 		_delay_ms(250);
 	}
 	_delay_ms(500);
@@ -349,6 +373,36 @@ void show_error(uint8_t code, uint8_t subCode)
 		_delay_ms(250);
 	}
 	_delay_ms(1000);
+}
+
+void show_signal(uint16_t signal)
+{
+	uint8_t h = signal / 100;
+	uint8_t t = (signal % 100) / 10;
+	uint8_t s = (signal % 100) % 10;
+	while (h--)
+	{
+		RED_R_ON();
+		_delay_ms(250);
+		RED_R_OFF();
+		_delay_ms(250);
+	}
+	_delay_ms(1000);
+	while (t--)
+	{
+		GREEN_R_ON();
+		_delay_ms(250);
+		GREEN_R_OFF();
+		_delay_ms(250);
+	}
+	_delay_ms(1000);
+	while (s--)
+	{
+		BLUE_R_ON();
+		_delay_ms(250);
+		BLUE_R_OFF();
+		_delay_ms(250);
+	}
 }
 
 void read_ir_data(void)
@@ -394,7 +448,7 @@ void read_ir_data(void)
 			}
 		}
 		
-		if (lowpulse >= 200 && lowpulse <= 300)
+		if (lowpulse >= 200 && lowpulse <= 320)
 		{
 			// this is a 1
 			buffer[currentByte] |= (1 << currentBit);
@@ -406,9 +460,12 @@ void read_ir_data(void)
 		}
 		else
 		{
+			show_signal(lowpulse);
+			_delay_ms(2000);
 			// bad data, escape!
 			if (currentBit == 0)
 			{
+				show_error(4, 0);
 				// TODO: Add a CRC validator here
 			}
 			else
@@ -445,6 +502,8 @@ void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentBy
 			save_buffer(buffer);
 			state = 3; // play current tune
 		}
+	} else {
+		show_error(5, 0);
 	}
 }
 
