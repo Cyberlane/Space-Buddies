@@ -26,6 +26,13 @@
 volatile uint8_t anyButtonPressed = 0;
 volatile uint8_t checkForButtonPress = 0;
 
+typedef enum {
+	STATE_MAIN,
+	STATE_RECEIVE,
+	STATE_SEND,
+	STATE_PLAY
+} state_t;
+
 /*
 	State Summary:
 	0: check buttons
@@ -33,7 +40,7 @@ volatile uint8_t checkForButtonPress = 0;
 	2: send IR data
 	3: play current tune
 */
-uint8_t state = 0;
+state_t state = STATE_MAIN;
 uint8_t currentTune = 0; // 0-9
 
 //TODO: Before each send, blink the current tune's LED colour
@@ -89,33 +96,33 @@ int main(void)
     {
 		switch(state)
 		{
-			case 0:
+			case STATE_MAIN:
 			{
 				check_buttons();
 				break;
 			}
-			case 1:
+			case STATE_RECEIVE:
 			{
 				read_ir_data();
 				break;
 			}
-			case 2:
+			case STATE_SEND:
 			{
 				//TODO: Turn on some LEDs to signify data being sent (no PWM)
 				send_data(currentTune);
-				state = 0;
 				_delay_ms(1000);
+				state = STATE_MAIN;
 				break;
 			}
-			case 3:
+			case STATE_PLAY:
 			{
 				play_tune(currentTune);
-				state = 0;
+				state = STATE_MAIN;
 				break;
 			}
 			default:
 			{
-				state = 0;
+				state = STATE_MAIN;
 				break;
 			}
 		}
@@ -255,37 +262,15 @@ void save_buffer(volatile uint8_t *pByte)
     /*
 		TODO: Last byte is crc
     */
-	
-	uint8_t t = currentTune;
-	while(t--)
-	{
-		GREEN_L_ON();
-		GREEN_R_ON();
-		_delay_ms(500);
-		GREEN_L_OFF();
-		GREEN_R_OFF();
-		_delay_ms(500);
-	}
-	_delay_ms(1000);
-	while(ctr--)
-	{
-		RED_L_ON();
-		RED_R_ON();
-		_delay_ms(500);
-		RED_L_OFF();
-		RED_R_OFF();
-		_delay_ms(500);
-	}
-	
     make_tune_available(currentTune);
-    state = 3;
+    state = STATE_PLAY;
 }
 
 void check_buttons(void)
 {
 	if (!IR_RX_READ())
 	{
-		state = 1;
+		state = STATE_RECEIVE;
 		return;
 	}
 	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
@@ -295,7 +280,7 @@ void check_buttons(void)
 	}
 	if (!IR_RX_READ())
 	{
-		state = 1;
+		state = STATE_RECEIVE;
 		return;
 	}
 	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
@@ -320,7 +305,7 @@ void right_button_pressed(void)
 void left_button_pressed(void)
 {
 	// Send current tune
-	state = 2;
+	state = STATE_SEND;
 }
 
 uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
@@ -470,7 +455,7 @@ void read_ir_data(void)
 			}
 			else
 			{
-				state = 0;
+				state = STATE_MAIN;
 				show_error(3, currentBit);
 				return;
 			}
@@ -494,13 +479,13 @@ void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentBy
 		{
 			// bad data, escape!
 			show_error(errorCode, currentBit);
-			state = 0; // check for buttons
+			state = STATE_MAIN; // check for buttons
 		}
 		else
 		{
 			buffer[currentByte] = END_MARKER;
 			save_buffer(buffer);
-			state = 3; // play current tune
+			state = STATE_PLAY; // play current tune
 		}
 	} else {
 		show_error(5, 0);
