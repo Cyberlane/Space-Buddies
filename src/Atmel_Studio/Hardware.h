@@ -1,5 +1,5 @@
 /*
- * SoftPWM.h
+ * Hardware.h
  *
  * Created: 07/10/2014 22:17:20
  *  Author: Justin
@@ -69,5 +69,3 @@
 #define IR_RX_DDR DDRC
 #define IR_RX_READ() (IR_RX_PIN & (1 << IR_RX))
 #define IR_RX_ON() (IR_RX_PORT |= (1 << IR_RX))
-
-void softpwm_init(void);

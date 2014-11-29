@@ -15,7 +15,7 @@
 #include "Space-Buddies.h"
 #include "Space-Tunes.h"
 #include "Space-Colours.h"
-#include "SoftPWM.h"
+#include "Hardware.h"
 
 // Infrared
 #define MAXPULSE 65000
@@ -33,13 +33,6 @@ typedef enum {
 	STATE_PLAY
 } state_t;
 
-/*
-	State Summary:
-	0: check buttons
-	1: read IR data
-	2: send IR data
-	3: play current tune
-*/
 state_t state = STATE_MAIN;
 uint8_t currentTune = 0; // 0-9
 

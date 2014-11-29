@@ -96,7 +96,7 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="SoftPWM.h">
+    <Compile Include="Hardware.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="Space-Buddies.c">

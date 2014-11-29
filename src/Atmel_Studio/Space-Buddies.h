@@ -69,4 +69,4 @@ void play_tune(uint8_t currentTune);
 void play_byte(uint8_t pByte);
 void play_tone(int tone, long tempo_value);
 
-
+void softpwm_init(void);
