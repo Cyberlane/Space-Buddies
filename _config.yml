@@ -23,6 +23,8 @@ relative_permalinks: false
 paginate:            10
 paginate_path:       '/blog/page:num/'
 excerpt_separator:   '{{ more }}'
+sass:
+  style: :compressed
 
 rdiscount:
   extensions: [smart]
