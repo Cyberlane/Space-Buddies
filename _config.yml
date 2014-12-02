@@ -1,0 +1,43 @@
+name:         'Space-Buddies'
+safe:         true
+auto:         true
+server:       false
+server_port:  4000
+url:          'http://www.space-buddies.com'
+domain:       'http://space-buddies.com'
+author:       'Justin Nel'
+description:  'The home for the Space Buddies on the internet, featuring instructions for the kits, tutorials, and more!'
+
+source:              .
+destination:         ./_site
+plugins:             ./_plugins
+
+future:              true
+lsi:                 false
+pygments:            false
+markdown:            rdiscount
+permalink:           '/blog/:year/:title'
+pagination_path:     '/blog/page:num/'
+include:             ['_pages']
+relative_permalinks: false
+paginate:            10
+paginate_path:       '/blog/page:num/'
+excerpt_separator:   '{{ more }}'
+
+rdiscount:
+  extensions: [smart]
+
+kramdown:
+  auto_ids:         true,
+  footnote_nr:      1
+  entity_output:    as_char
+  toc_levels:       1..6
+  use_coderay:      false
+  
+  coderay:
+    coderay_wrap:               div
+    coderay_line_numbers:       inline
+    coderay_line_numbers_start: 1
+    coderay_tab_width:          4
+    coderay_bold_every:         10
+    coderay_css:                style
