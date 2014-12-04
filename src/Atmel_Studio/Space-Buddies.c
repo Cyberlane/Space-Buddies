@@ -20,7 +20,7 @@
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 24
-#define IR_HALFLIFE 13
+#define IR_HALFLIFE 11
 // Audio
 #define vel 10000l;//1.25;
 
@@ -477,6 +477,7 @@ void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentBy
 		}
 		else
 		{
+			
 			buffer[currentByte] = END_MARKER;
 			save_buffer(buffer);
 			state = STATE_PLAY; // play current tune
@@ -496,7 +497,7 @@ void send_data(volatile uint8_t index)
 		currentBit++;
 	}
 	
-	const uint8_t *ptr = stored_tunes.tunes[currentTune];
+	const uint8_t *ptr = stored_tunes.tunes[index];
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
 		currentBit = 0;
@@ -530,7 +531,7 @@ void send_IR(int ir_cycles)
 	{
 		//TODO: Extract these into macros
 		IR_TX_ON();
-		_delay_us(IR_RESOLUTION);
+		_delay_us(IR_HALFLIFE);
 		IR_TX_OFF();
 		_delay_us(IR_HALFLIFE);
 	}
