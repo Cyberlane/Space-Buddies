@@ -57,11 +57,11 @@
 #define SPEAKER_ON() (SPEAKER_PORT |= (1 << SPEAKER))
 #define SPEAKER_OFF() (SPEAKER_PORT &= ~(1 << SPEAKER))
 
-#define IR_TX PB4
-#define IR_TX_PORT PORTB
-#define IR_TX_DDR DDRB
-#define IR_TX_ON() (IR_TX_PORT |= (1 << IR_TX))
-#define IR_TX_OFF() (IR_TX_PORT &= ~(1 << IR_TX))
+#define IR_TX PD6
+#define IR_TX_PORT PORTD
+#define IR_TX_DDR DDRD
+#define IR_TX_ON() (IR_TX_PORT &= ~(1 << IR_TX))
+#define IR_TX_OFF() (IR_TX_PORT |= (1 << IR_TX))
 
 #define IR_RX PC5
 #define IR_RX_PIN PINC
