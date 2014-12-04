@@ -19,7 +19,8 @@
 
 // Infrared
 #define MAXPULSE 65000
-#define IR_RESOLUTION 16
+#define IR_RESOLUTION 24
+#define IR_HALFLIFE 13
 // Audio
 #define vel 10000l;//1.25;
 
@@ -529,9 +530,9 @@ void send_IR(int ir_cycles)
 	{
 		//TODO: Extract these into macros
 		IR_TX_ON();
-		_delay_us(10);
+		_delay_us(IR_RESOLUTION);
 		IR_TX_OFF();
-		_delay_us(10);
+		_delay_us(IR_HALFLIFE);
 	}
 	// Turn background interrupts back on
 	sei();
