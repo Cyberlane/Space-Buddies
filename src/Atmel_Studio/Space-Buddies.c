@@ -487,56 +487,42 @@ void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentBy
 	}
 }
 
+void send_IR_byte(uint8_t val)
+{
+	uint8_t i, cycles;
+	
+	cli();
+	for (i=0; i<8; i++) {
+		if (val & (1 << i)) {
+			cycles = 220;
+		} else {
+			cycles = 100;
+		}
+		
+		while (cycles--) {
+			IR_TX_ON();
+			_delay_us(10);
+			IR_TX_OFF();
+			_delay_us(10);
+		};
+		
+		/* inter-bit time */
+		_delay_us(250);
+	}
+	sei();
+}
+
 void send_data(volatile uint8_t index)
 {
 	GREEN_R_ON();
-	uint8_t currentBit = 0;
-	while (currentBit < 8)
-	{
-		send_IR_bit(READ_BIT(index, currentBit));
-		currentBit++;
-	}
+	send_IR_byte(index);
 	
 	const uint8_t *ptr = stored_tunes.tunes[index];
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
-		currentBit = 0;
-		while (currentBit < 8)
-		{
-			send_IR_bit(READ_BIT(data, currentBit));
-			currentBit++;
-		}
+		send_IR_byte(data);
 	}
 	GREEN_R_OFF();
-}
-
-void send_IR_bit(uint8_t bit)
-{
-	if (bit == 1)
-	{
-		send_IR(220);
-	}
-	else
-	{
-		send_IR(100);
-	}
-	_delay_us(250);
-}
-
-void send_IR(int ir_cycles)
-{
-	// Turn off background interrupts
-	cli();
-	while(ir_cycles--)
-	{
-		//TODO: Extract these into macros
-		IR_TX_ON();
-		_delay_us(IR_HALFLIFE);
-		IR_TX_OFF();
-		_delay_us(IR_HALFLIFE);
-	}
-	// Turn background interrupts back on
-	sei();
 }
 
 void delay_ms(uint16_t count)
