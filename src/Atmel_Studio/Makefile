@@ -5,9 +5,9 @@
 # (GNU make, BSD make, SysV make)
 
 
-MCU = attiny48
+MCU = atmega8
 FORMAT = ihex
-TARGET = main
+TARGET = Space-Buddies
 SRC = $(TARGET).c
 ASRC = 
 OPT = s
