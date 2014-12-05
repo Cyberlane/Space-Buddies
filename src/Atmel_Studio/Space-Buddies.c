@@ -398,33 +398,32 @@ void read_ir_data(void)
 		// Start out with no pulse length
 		highpulse = lowpulse = 0;
 		
-		// While pin is high
-		while(IR_RX_READ())
-		{
+		/* wait for a falling edge */
+		while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
 			highpulse++;
 			_delay_us(IR_RESOLUTION);
-			/*
-			If the pulse is too long, we have timed out
-			Either nothing was received or the code is finished
-			Process what we've grabbed so far and then reset
-			*/
-			if (highpulse >= MAXPULSE)
-			{
-				validate_buffer(currentPulse, currentBit, currentByte, buffer, 1);
-				return;
-			}
+		};
+		
+		if (highpulse >= MAXPULSE)
+		{
+			validate_buffer(currentPulse, currentBit, currentByte, buffer, 1);
+			return;
 		}
 		
-		// While pin is low
-		while(!IR_RX_READ())
-		{
+		/* pin isn't high anymore. See how long it's low */
+		
+		cli();
+		while (((PINC & (1 << PC5)) == 0) && lowpulse < MAXPULSE) {
 			lowpulse++;
 			_delay_us(IR_RESOLUTION);
-			if (lowpulse >= MAXPULSE)
-			{
-				validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
-				return;
-			}
+		};
+		sei();
+		
+		// While pin is low
+		if (lowpulse >= MAXPULSE)
+		{
+			validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
+			return;
 		}
 		
 		if (lowpulse >= 200 && lowpulse <= 320)
