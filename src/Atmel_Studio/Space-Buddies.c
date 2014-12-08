@@ -24,9 +24,6 @@
 // Audio
 #define vel 10000l;//1.25;
 
-volatile uint8_t anyButtonPressed = 0;
-volatile uint8_t checkForButtonPress = 0;
-
 typedef enum {
 	STATE_MAIN,
 	STATE_RECEIVE,
@@ -145,15 +142,13 @@ void intialise_game(void)
 	if (selected == 99)
 	{
 		i = 0;
-		anyButtonPressed = 0;
-		checkForButtonPress = 1;
 		start_timer2();
 		while(1)
 		{
 			i = i % 10;
 			set_colour(&colours[i]);
 			_delay_ms(200);
-			if (anyButtonPressed)
+			if (read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT) >= 2)
 			{
 				break;
 			}
@@ -231,14 +226,6 @@ ISR(TIMER2_COMP_vect)
 	} else {
 		BLUE_L_OFF();
 		BLUE_R_OFF();
-	}
-	
-	if (cnt == 0 && checkForButtonPress == 1 && anyButtonPressed == 0)
-	{
-		if (read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT) >= 2)
-		{
-			anyButtonPressed = 1;
-		}
 	}
 }
 
