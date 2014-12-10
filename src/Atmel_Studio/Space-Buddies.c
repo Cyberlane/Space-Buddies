@@ -159,7 +159,7 @@ void intialise_game(void)
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
-	//play_tune(currentTune);
+	play_tune(currentTune);
 	clear_leds();
 }
 
@@ -254,18 +254,19 @@ void check_buttons(void)
 		state = STATE_RECEIVE;
 		return;
 	}
-	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
-	if (leftButton >= 2){
+	
+	if (is_left_button_pressed()){
 		left_button_pressed();
 		_delay_ms(200);
 	}
+	
 	if (!IR_RX_READ())
 	{
 		state = STATE_RECEIVE;
 		return;
 	}
-	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
-	if (rightButton >= 2){
+	
+	if (is_right_button_pressed()){
 		right_button_pressed();
 		_delay_ms(200);
 	}
@@ -289,6 +290,28 @@ void left_button_pressed(void)
 	state = STATE_SEND;
 }
 
+uint8_t is_left_button_pressed(void)
+{
+	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
+	if (leftButton >= 2)
+	{
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+uint8_t is_right_button_pressed(void)
+{
+	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
+	if (rightButton >= 2)
+	{
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
 {
 	uint8_t bitmask = 1 << pinNumber;
@@ -298,14 +321,23 @@ uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volat
 	*ddr &= ~(bitmask);
 	*port |= bitmask;
 	int cycles = 17;
-	for(int i = 0; i < 16; i++)
-	{
-		if (*pin & bitmask)
-		{
-			cycles = i;
-			break;
-		}
-	}
+		 if (*pin & bitmask) { cycles =  0;}
+	else if (*pin & bitmask) { cycles =  1;}
+	else if (*pin & bitmask) { cycles =  2;}
+	else if (*pin & bitmask) { cycles =  3;}
+	else if (*pin & bitmask) { cycles =  4;}
+	else if (*pin & bitmask) { cycles =  5;}
+	else if (*pin & bitmask) { cycles =  6;}
+	else if (*pin & bitmask) { cycles =  7;}
+	else if (*pin & bitmask) { cycles =  8;}
+	else if (*pin & bitmask) { cycles =  9;}
+	else if (*pin & bitmask) { cycles = 10;}
+	else if (*pin & bitmask) { cycles = 11;}
+	else if (*pin & bitmask) { cycles = 12;}
+	else if (*pin & bitmask) { cycles = 13;}
+	else if (*pin & bitmask) { cycles = 14;}
+	else if (*pin & bitmask) { cycles = 15;}
+	else if (*pin & bitmask) { cycles = 16;}
 	*port &= ~(bitmask);
 	*ddr |= bitmask;
 	
