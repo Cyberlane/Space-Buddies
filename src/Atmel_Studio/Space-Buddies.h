@@ -47,6 +47,8 @@ void send_IR_bit(uint8_t bit);
 uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode);
 uint8_t read_ir_data(void);
 
+uint8_t reset_game(void);
+
 uint8_t check_buttons(void);
 uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
 uint8_t is_left_button_pressed(void);

@@ -25,6 +25,7 @@
 #define vel 10000l;//1.25;
 
 typedef enum {
+	STATE_INITIALISE,
 	STATE_MAIN,
 	STATE_RECEIVE,
 	STATE_SEND,
@@ -33,7 +34,7 @@ typedef enum {
 	STATE_SKIP
 } state_t;
 
-state_t state = STATE_MAIN;
+state_t state = STATE_INITIALISE;
 uint8_t currentTune = 0; // 0-9
 
 //TODO: Before each send, blink the current tune's LED colour
@@ -83,12 +84,17 @@ int main(void)
 	
 	_delay_ms(100);
 	timer_init();
-	intialise_game();
 	
     while(1)
     {
 		switch(state)
 		{
+			case STATE_INITIALISE:
+			{
+				intialise_game();
+				state = STATE_MAIN;
+				break;
+			}
 			case STATE_MAIN:
 			{
 				state = check_buttons();
@@ -127,7 +133,7 @@ int main(void)
 			}
 			case STATE_RESET:
 			{
-				//TODO
+				state = reset_game();
 				break;
 			}
 			default:
@@ -137,6 +143,15 @@ int main(void)
 			}
 		}
     }
+}
+
+uint8_t reset_game(void)
+{
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		eeprom_update_byte(&stored_tunes.availableTunes[i], 0);
+	}
+	return STATE_INITIALISE;
 }
 
 uint8_t get_tune_state(uint8_t tuneNumber)
@@ -166,8 +181,8 @@ void intialise_game(void)
 		{
 			i = i % 10;
 			set_colour(&colours[i]);
-			_delay_ms(200);
-			if (read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT) >= 2)
+			_delay_ms(500);
+			if (is_left_button_pressed() || is_right_button_pressed())
 			{
 				break;
 			}

@@ -7,7 +7,6 @@
 
 typedef struct {
 	uint8_t tunes[10][50];
-	uint8_t isInitialised;
 	uint8_t availableTunes[10];
 } tunes_t;
 
@@ -102,7 +101,6 @@ tunes_t stored_tunes EEMEM = {
 			NOTE(T_EBX, 4), NOTE(T_REST, 5), END_MARKER
 		}
 	},
-	.isInitialised = 0,
 	.availableTunes = {
 		0,1,0,0,0,
 		0,0,0,0,0
