@@ -28,7 +28,9 @@ typedef enum {
 	STATE_MAIN,
 	STATE_RECEIVE,
 	STATE_SEND,
-	STATE_PLAY
+	STATE_PLAY,
+	STATE_RESET,
+	STATE_SKIP
 } state_t;
 
 state_t state = STATE_MAIN;
@@ -89,12 +91,12 @@ int main(void)
 		{
 			case STATE_MAIN:
 			{
-				check_buttons();
+				state = check_buttons();
 				break;
 			}
 			case STATE_RECEIVE:
 			{
-				read_ir_data();
+				state = read_ir_data();
 				break;
 			}
 			case STATE_SEND:
@@ -109,6 +111,23 @@ int main(void)
 			{
 				play_tune(currentTune);
 				state = STATE_MAIN;
+				break;
+			}
+			case STATE_SKIP:
+			{
+				currentTune = find_next_tune(currentTune);
+				set_colour(&colours[currentTune]);
+				start_timer2();
+				_delay_ms(1000);
+				stop_timer2();
+				_delay_ms(100);
+				clear_leds();
+				state = STATE_MAIN;
+				break;
+			}
+			case STATE_RESET:
+			{
+				//TODO
 				break;
 			}
 			default:
@@ -244,72 +263,62 @@ void save_buffer(volatile uint8_t *pByte)
 		TODO: Last byte is crc
     */
     make_tune_available(currentTune);
-    state = STATE_PLAY;
 }
 
-void check_buttons(void)
+state_t check_buttons(void)
 {
-	if (!IR_RX_READ())
-	{
-		state = STATE_RECEIVE;
-		return;
-	}
+	/*
+		hold and release a single button for under 2 seconds = single press
+		hold and release a single button for over 2 seconds = long press
+		hold both buttons for over 10 seconds = reset
+
+
+		left press = send
+		right press = skip/next
+		right hold = play current
+		
+		anything else is just invalid and upon release of both buttons does nothing other than reset the counter
+	*/
 	
-	if (is_left_button_pressed()){
-		left_button_pressed();
+	uint8_t leftCounter = 0;
+	uint8_t rightCounter = 0;
+	
+	while (1) {
+		uint8_t left = is_left_button_pressed();
+		uint8_t right = is_right_button_pressed();
+		if (!left && !right) {
+			break;
+		}
+		leftCounter += left ? 1 : 0;
+		rightCounter += right ? 1 : 0;
 		_delay_ms(200);
 	}
 	
-	if (!IR_RX_READ())
-	{
-		state = STATE_RECEIVE;
-		return;
+	if (leftCounter > 0 && leftCounter <= 20 && rightCounter == 0) {
+		return STATE_SEND;
+	} else if (rightCounter > 0 && rightCounter <= 20 && leftCounter == 0) {
+		return STATE_SKIP;
+	} else if (rightCounter > 20 && leftCounter == 0) {
+		return STATE_PLAY;
+	} else if (leftCounter > 20 && rightCounter > 20) {
+		return STATE_RESET;
+	} else if (!IR_RX_READ()) {
+		return STATE_RECEIVE;
+	} else {
+		return STATE_MAIN;
 	}
-	
-	if (is_right_button_pressed()){
-		right_button_pressed();
-		_delay_ms(200);
-	}
-}
-
-void right_button_pressed(void)
-{
-	// Select next tune and flash it's colours
-	currentTune = find_next_tune(currentTune);
-	set_colour(&colours[currentTune]);
-	start_timer2();
-	_delay_ms(500);
-	stop_timer2();
-	_delay_ms(100);
-	clear_leds();
-}
-
-void left_button_pressed(void)
-{
-	// Send current tune
-	state = STATE_SEND;
 }
 
 uint8_t is_left_button_pressed(void)
 {
 	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
-	if (leftButton >= 2)
-	{
-		return 1;
-	} else {
-		return 0;
-	}
+	return (leftButton >= 2) ? 1 : 0;
 }
 
 uint8_t is_right_button_pressed(void)
 {
 	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
-	if (rightButton >= 2)
-	{
-		return 1;
-	} else {
-		return 0;
-	}
+	return (rightButton >= 2) ? 1 : 0;
 }
 
 uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
@@ -403,7 +412,7 @@ void show_signal(uint16_t signal)
 	}
 }
 
-void read_ir_data(void)
+uint8_t read_ir_data(void)
 {
 	uint8_t buffer[50];
 	uint8_t currentBit = 0;
@@ -425,8 +434,7 @@ void read_ir_data(void)
 		
 		if (highpulse >= MAXPULSE)
 		{
-			validate_buffer(currentPulse, currentBit, currentByte, buffer, 1);
-			return;
+			return validate_buffer(currentPulse, currentBit, currentByte, buffer, 1);
 		}
 		
 		/* pin isn't high anymore. See how long it's low */
@@ -441,8 +449,7 @@ void read_ir_data(void)
 		// While pin is low
 		if (lowpulse >= MAXPULSE)
 		{
-			validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
-			return;
+			return validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
 		}
 		
 		if (lowpulse >= 200 && lowpulse <= 320)
@@ -467,9 +474,8 @@ void read_ir_data(void)
 			}
 			else
 			{
-				state = STATE_MAIN;
 				show_error(3, currentBit);
-				return;
+				return STATE_MAIN;
 			}
 		}
 		
@@ -483,7 +489,7 @@ void read_ir_data(void)
 	}
 }
 
-void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
+uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
 {
 	if (currentPulse != 0)
 	{
@@ -491,18 +497,18 @@ void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentBy
 		{
 			// bad data, escape!
 			show_error(errorCode, currentBit);
-			state = STATE_MAIN; // check for buttons
 		}
 		else
 		{
 			
 			buffer[currentByte] = END_MARKER;
 			save_buffer(buffer);
-			state = STATE_PLAY; // play current tune
+			return STATE_PLAY; // play current tune
 		}
 	} else {
 		show_error(5, 0);
 	}
+	return STATE_MAIN;
 }
 
 void send_IR_byte(uint8_t val)
@@ -541,14 +547,6 @@ void send_data(volatile uint8_t index)
 		send_IR_byte(data);
 	}
 	GREEN_R_OFF();
-}
-
-void delay_ms(uint16_t count)
-{
-	while(count--)
-	{
-		_delay_ms(1);
-	}
 }
 
 void delay_us(uint16_t count)

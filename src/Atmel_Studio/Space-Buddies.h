@@ -44,13 +44,13 @@ void timer_init(void);
 void send_IR(int cycles);
 void send_IR_bit(uint8_t bit);
 
-void validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode);
-void read_ir_data(void);
+uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode);
+uint8_t read_ir_data(void);
 
-void check_buttons(void);
+uint8_t check_buttons(void);
 uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber);
-void left_button_pressed(void);
-void right_button_pressed(void);
+uint8_t is_left_button_pressed(void);
+uint8_t is_right_button_pressed(void);
 void start_timer2(void);
 void stop_timer2(void);
 void clear_leds(void);
