@@ -21,6 +21,10 @@
 #define MAXPULSE 65000
 #define IR_RESOLUTION 24
 #define IR_HALFLIFE 11
+#define IR_ONE_BYTE 220
+#define IR_ZERO_BYTE 100
+#define IR_BYTE_LOWER(byte) (byte - (byte / 10))
+#define IR_BYTE_UPPER(byte) (byte + (byte / 10))
 // Audio
 #define vel 10000l;//1.25;
 
@@ -38,28 +42,6 @@ state_t state = STATE_INITIALISE;
 uint8_t currentTune = 0; // 0-9
 
 //TODO: Before each send, blink the current tune's LED colour
-
-uint8_t find_next_tune(uint8_t currentTune)
-{
-	BLUE_L_ON();
-	uint8_t idx = 0;
-	while(1)
-	{
-		idx = (++currentTune) % 10;
-		if(get_tune_state(idx))
-		{
-			return idx;
-		}
-	}
-	BLUE_L_OFF();
-}
-
-void set_colour(volatile colors_codes_t *codes)
-{
-	red = codes->red;
-	blue = codes->blue;
-	green = codes->green;
-}
 
 int main(void)
 {
@@ -123,9 +105,9 @@ int main(void)
 			{
 				currentTune = find_next_tune(currentTune);
 				set_colour(&colours[currentTune]);
-				start_timer2();
+				TIMER2_START();
 				_delay_ms(1000);
-				stop_timer2();
+				TIMER2_STOP();
 				_delay_ms(100);
 				clear_leds();
 				state = STATE_MAIN;
@@ -145,18 +127,13 @@ int main(void)
     }
 }
 
-uint8_t reset_game(void)
+void timer_init(void)
 {
-	for (uint8_t i = 0; i < 10; i++)
-	{
-		eeprom_update_byte(&stored_tunes.availableTunes[i], 0);
-	}
-	return STATE_INITIALISE;
-}
-
-uint8_t get_tune_state(uint8_t tuneNumber)
-{
-	return eeprom_read_byte(&stored_tunes.availableTunes[tuneNumber]);
+	// Timer 2
+	TCCR2 = (1 << WGM21)|(1 << CS21);
+	OCR2 = 65;
+	// Turn on interrupts
+	sei();
 }
 
 void intialise_game(void)
@@ -176,7 +153,7 @@ void intialise_game(void)
 	if (selected == 99)
 	{
 		i = 0;
-		start_timer2();
+		TIMER2_START();
 		while(1)
 		{
 			i = i % 10;
@@ -188,96 +165,13 @@ void intialise_game(void)
 			}
 			i++;
 		}
-		stop_timer2();
+		TIMER2_STOP();
 		make_tune_available(i);
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
 	play_tune(currentTune);
 	clear_leds();
-}
-
-void make_tune_available(uint8_t index)
-{
-	eeprom_update_byte((uint8_t*)&stored_tunes.availableTunes[index], 1);
-}
-
-void clear_leds(void)
-{
-	RED_L_OFF();
-	RED_R_OFF();
-	GREEN_L_OFF();
-	GREEN_R_OFF();
-	BLUE_L_OFF();
-	BLUE_R_OFF();
-}
-
-void timer_init(void)
-{
-	// Timer 2
-	TCCR2 = (1 << WGM21)|(1 << CS21);
-	OCR2 = 65;
-	// Turn on interrupts
-	sei();
-}
-
-void start_timer2(void)
-{
-	TIMSK |= (1 << OCIE2);
-}
-
-void stop_timer2(void)
-{
-	TIMSK &= ~(1 << OCIE2);
-}
-
-ISR(TIMER2_COMP_vect)
-{
-	cnt++;
-	
-	if (cnt > red)
-	{
-		RED_L_ON();
-		RED_R_ON();
-	} else {
-		RED_L_OFF();
-		RED_R_OFF();
-	}
-	
-	if (cnt > green)
-	{
-		GREEN_L_ON();
-		GREEN_R_ON();
-	} else {
-		GREEN_L_OFF();
-		GREEN_R_OFF();
-	}
-	
-	if (cnt > blue)
-	{
-		BLUE_L_ON();
-		BLUE_R_ON();
-	} else {
-		BLUE_L_OFF();
-		BLUE_R_OFF();
-	}
-}
-
-void save_buffer(volatile uint8_t *pByte)
-{
-	currentTune = *pByte;
-	uint8_t *ptr = stored_tunes.tunes[currentTune];
-	uint8_t ctr = 0;
-	while (*pByte != END_MARKER)
-	{
-		eeprom_update_byte(ptr++, *pByte++);
-		ctr++;
-	}
-	eeprom_update_byte(ptr++, END_MARKER);
-    /*
-		TODO: Last byte is crc
-    */
-    make_tune_available(currentTune);
 }
 
 state_t check_buttons(void)
@@ -324,109 +218,6 @@ state_t check_buttons(void)
 	}
 }
 
-uint8_t is_left_button_pressed(void)
-{
-	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
-	return (leftButton >= 2) ? 1 : 0;
-}
-
-uint8_t is_right_button_pressed(void)
-{
-	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
-	return (rightButton >= 2) ? 1 : 0;
-}
-
-uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
-{
-	uint8_t bitmask = 1 << pinNumber;
-	*port &= ~(bitmask);
-	*ddr |= bitmask;
-	_delay_ms(1);
-	*ddr &= ~(bitmask);
-	*port |= bitmask;
-	int cycles = 17;
-		 if (*pin & bitmask) { cycles =  0;}
-	else if (*pin & bitmask) { cycles =  1;}
-	else if (*pin & bitmask) { cycles =  2;}
-	else if (*pin & bitmask) { cycles =  3;}
-	else if (*pin & bitmask) { cycles =  4;}
-	else if (*pin & bitmask) { cycles =  5;}
-	else if (*pin & bitmask) { cycles =  6;}
-	else if (*pin & bitmask) { cycles =  7;}
-	else if (*pin & bitmask) { cycles =  8;}
-	else if (*pin & bitmask) { cycles =  9;}
-	else if (*pin & bitmask) { cycles = 10;}
-	else if (*pin & bitmask) { cycles = 11;}
-	else if (*pin & bitmask) { cycles = 12;}
-	else if (*pin & bitmask) { cycles = 13;}
-	else if (*pin & bitmask) { cycles = 14;}
-	else if (*pin & bitmask) { cycles = 15;}
-	else if (*pin & bitmask) { cycles = 16;}
-	*port &= ~(bitmask);
-	*ddr |= bitmask;
-	
-	return cycles;
-}
-
-void show_error(uint8_t code, uint8_t subCode)
-{
-	while(code--)
-	{
-		BLUE_R_ON();
-		_delay_ms(250);
-		BLUE_R_OFF();
-		_delay_ms(250);
-	}
-	_delay_ms(500);
-	uint8_t bigger = subCode / 10;
-	uint8_t lesser = subCode % 10;
-	while(bigger--)
-	{
-		RED_R_ON();
-		_delay_ms(250);
-		RED_R_OFF();
-		_delay_ms(250);
-	}
-	while (lesser--)
-	{
-		GREEN_R_ON();
-		_delay_ms(250);
-		GREEN_R_OFF();
-		_delay_ms(250);
-	}
-	_delay_ms(1000);
-}
-
-void show_signal(uint16_t signal)
-{
-	uint8_t h = signal / 100;
-	uint8_t t = (signal % 100) / 10;
-	uint8_t s = (signal % 100) % 10;
-	while (h--)
-	{
-		RED_R_ON();
-		_delay_ms(250);
-		RED_R_OFF();
-		_delay_ms(250);
-	}
-	_delay_ms(1000);
-	while (t--)
-	{
-		GREEN_R_ON();
-		_delay_ms(250);
-		GREEN_R_OFF();
-		_delay_ms(250);
-	}
-	_delay_ms(1000);
-	while (s--)
-	{
-		BLUE_R_ON();
-		_delay_ms(250);
-		BLUE_R_OFF();
-		_delay_ms(250);
-	}
-}
-
 uint8_t read_ir_data(void)
 {
 	uint8_t buffer[50];
@@ -467,12 +258,12 @@ uint8_t read_ir_data(void)
 			return validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
 		}
 		
-		if (lowpulse >= 200 && lowpulse <= 320)
+		if (lowpulse >= IR_BYTE_LOWER(IR_ONE_BYTE) && lowpulse <= IR_BYTE_UPPER(IR_ONE_BYTE))
 		{
 			// this is a 1
 			buffer[currentByte] |= (1 << currentBit);
 		}
-		else if (lowpulse >= 50 && lowpulse <= 150)
+		else if (lowpulse >= IR_BYTE_LOWER(IR_ZERO_BYTE) && lowpulse <= IR_BYTE_UPPER(IR_ZERO_BYTE))
 		{
 			// this is a 0
 			buffer[currentByte] &= ~(1 << currentBit);
@@ -504,53 +295,6 @@ uint8_t read_ir_data(void)
 	}
 }
 
-uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
-{
-	if (currentPulse != 0)
-	{
-		if (currentBit != 0)
-		{
-			// bad data, escape!
-			show_error(errorCode, currentBit);
-		}
-		else
-		{
-			
-			buffer[currentByte] = END_MARKER;
-			save_buffer(buffer);
-			return STATE_PLAY; // play current tune
-		}
-	} else {
-		show_error(5, 0);
-	}
-	return STATE_MAIN;
-}
-
-void send_IR_byte(uint8_t val)
-{
-	uint8_t i, cycles;
-	
-	cli();
-	for (i=0; i<8; i++) {
-		if (val & (1 << i)) {
-			cycles = 220;
-		} else {
-			cycles = 100;
-		}
-		
-		while (cycles--) {
-			IR_TX_ON();
-			_delay_us(10);
-			IR_TX_OFF();
-			_delay_us(10);
-		};
-		
-		/* inter-bit time */
-		_delay_us(250);
-	}
-	sei();
-}
-
 void send_data(volatile uint8_t index)
 {
 	GREEN_R_ON();
@@ -564,25 +308,112 @@ void send_data(volatile uint8_t index)
 	GREEN_R_OFF();
 }
 
-void delay_us(uint16_t count)
-{
-	while(count--)
-	{
-		_delay_us(1);
-	}
-}
-
 void play_tune(uint8_t currentTune)
 {
-	start_timer2();
+	TIMER2_START();
 	const uint8_t *ptr = stored_tunes.tunes[currentTune];
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
 		play_byte(data);
 	}
-	stop_timer2();
+	TIMER2_STOP();
 	_delay_ms(10);
 	clear_leds();
+}
+
+uint8_t find_next_tune(uint8_t currentTune)
+{
+	BLUE_L_ON();
+	uint8_t idx = 0;
+	while(1)
+	{
+		idx = (++currentTune) % 10;
+		if(get_tune_state(idx))
+		{
+			return idx;
+		}
+	}
+	BLUE_L_OFF();
+}
+
+uint8_t reset_game(void)
+{
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		eeprom_update_byte(&stored_tunes.availableTunes[i], 0);
+	}
+	return STATE_INITIALISE;
+}
+
+uint8_t get_tune_state(uint8_t tuneNumber)
+{
+	return eeprom_read_byte(&stored_tunes.availableTunes[tuneNumber]);
+}
+
+void set_colour(volatile colors_codes_t *codes)
+{
+	red = codes->red;
+	blue = codes->blue;
+	green = codes->green;
+}
+
+uint8_t is_left_button_pressed(void)
+{
+	uint8_t leftButton = read_capacitive_pin(&BUTTON_LEFT_DDR, &BUTTON_LEFT_PORT, &BUTTON_LEFT_PIN, BUTTON_LEFT);
+	return (leftButton >= 2) ? 1 : 0;
+}
+
+uint8_t is_right_button_pressed(void)
+{
+	uint8_t rightButton = read_capacitive_pin(&BUTTON_RIGHT_DDR, &BUTTON_RIGHT_PORT, &BUTTON_RIGHT_PIN, BUTTON_RIGHT);
+	return (rightButton >= 2) ? 1 : 0;
+}
+
+void make_tune_available(uint8_t index)
+{
+	eeprom_update_byte((uint8_t*)&stored_tunes.availableTunes[index], 1);
+}
+
+void clear_leds(void)
+{
+	RED_L_OFF();
+	RED_R_OFF();
+	GREEN_L_OFF();
+	GREEN_R_OFF();
+	BLUE_L_OFF();
+	BLUE_R_OFF();
+}
+
+uint8_t read_capacitive_pin(volatile uint8_t* ddr, volatile uint8_t* port, volatile uint8_t* pin, uint8_t pinNumber)
+{
+	uint8_t bitmask = 1 << pinNumber;
+	*port &= ~(bitmask);
+	*ddr |= bitmask;
+	_delay_ms(1);
+	*ddr &= ~(bitmask);
+	*port |= bitmask;
+	int cycles = 17;
+	if (*pin & bitmask) { cycles =  0;}
+	else if (*pin & bitmask) { cycles =  1;}
+	else if (*pin & bitmask) { cycles =  2;}
+	else if (*pin & bitmask) { cycles =  3;}
+	else if (*pin & bitmask) { cycles =  4;}
+	else if (*pin & bitmask) { cycles =  5;}
+	else if (*pin & bitmask) { cycles =  6;}
+	else if (*pin & bitmask) { cycles =  7;}
+	else if (*pin & bitmask) { cycles =  8;}
+	else if (*pin & bitmask) { cycles =  9;}
+	else if (*pin & bitmask) { cycles = 10;}
+	else if (*pin & bitmask) { cycles = 11;}
+	else if (*pin & bitmask) { cycles = 12;}
+	else if (*pin & bitmask) { cycles = 13;}
+	else if (*pin & bitmask) { cycles = 14;}
+	else if (*pin & bitmask) { cycles = 15;}
+	else if (*pin & bitmask) { cycles = 16;}
+	*port &= ~(bitmask);
+	*ddr |= bitmask;
+	
+	return cycles;
 }
 
 void play_byte(uint8_t pByte)
@@ -715,5 +546,163 @@ void play_tone(int tone, long tempo_value)
 		delay_us(tone / 2);
 		
 		tempo_position += tone;
+	}
+}
+
+void save_buffer(volatile uint8_t *pByte)
+{
+	currentTune = *pByte;
+	uint8_t *ptr = stored_tunes.tunes[currentTune];
+	uint8_t ctr = 0;
+	while (*pByte != END_MARKER)
+	{
+		eeprom_update_byte(ptr++, *pByte++);
+		ctr++;
+	}
+	eeprom_update_byte(ptr++, END_MARKER);
+    /*
+		TODO: Last byte is crc
+    */
+    make_tune_available(currentTune);
+}
+
+void show_error(uint8_t code, uint8_t subCode)
+{
+	while(code--)
+	{
+		BLUE_R_ON();
+		_delay_ms(250);
+		BLUE_R_OFF();
+		_delay_ms(250);
+	}
+	_delay_ms(500);
+	uint8_t bigger = subCode / 10;
+	uint8_t lesser = subCode % 10;
+	while(bigger--)
+	{
+		RED_R_ON();
+		_delay_ms(250);
+		RED_R_OFF();
+		_delay_ms(250);
+	}
+	while (lesser--)
+	{
+		GREEN_R_ON();
+		_delay_ms(250);
+		GREEN_R_OFF();
+		_delay_ms(250);
+	}
+	_delay_ms(1000);
+}
+
+void show_signal(uint16_t signal)
+{
+	uint8_t h = signal / 100;
+	uint8_t t = (signal % 100) / 10;
+	uint8_t s = (signal % 100) % 10;
+	while (h--)
+	{
+		RED_R_ON();
+		_delay_ms(250);
+		RED_R_OFF();
+		_delay_ms(250);
+	}
+	_delay_ms(1000);
+	while (t--)
+	{
+		GREEN_R_ON();
+		_delay_ms(250);
+		GREEN_R_OFF();
+		_delay_ms(250);
+	}
+	_delay_ms(1000);
+	while (s--)
+	{
+		BLUE_R_ON();
+		_delay_ms(250);
+		BLUE_R_OFF();
+		_delay_ms(250);
+	}
+}
+
+uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
+{
+	if (currentPulse != 0)
+	{
+		if (currentBit != 0)
+		{
+			// bad data, escape!
+			show_error(errorCode, currentBit);
+		}
+		else
+		{
+			buffer[currentByte] = END_MARKER;
+			save_buffer(buffer);
+			return STATE_PLAY;
+		}
+	} else {
+		show_error(5, 0);
+	}
+	return STATE_MAIN;
+}
+
+void send_IR_byte(uint8_t val)
+{
+	uint8_t i, cycles;
+	
+	cli();
+	for (i=0; i<8; i++) {
+		cycles = (val & (1 << i)) ? IR_ONE_BYTE : IR_ZERO_BYTE;
+		
+		while (cycles--) {
+			IR_TX_ON();
+			_delay_us(10);
+			IR_TX_OFF();
+			_delay_us(10);
+		};
+		
+		/* inter-bit time */
+		_delay_us(250);
+	}
+	sei();
+}
+
+void delay_us(uint16_t count)
+{
+	while(count--)
+	{
+		_delay_us(1);
+	}
+}
+
+ISR(TIMER2_COMP_vect)
+{
+	cnt++;
+	
+	if (cnt > red)
+	{
+		RED_L_ON();
+		RED_R_ON();
+	} else {
+		RED_L_OFF();
+		RED_R_OFF();
+	}
+	
+	if (cnt > green)
+	{
+		GREEN_L_ON();
+		GREEN_R_ON();
+	} else {
+		GREEN_L_OFF();
+		GREEN_R_OFF();
+	}
+	
+	if (cnt > blue)
+	{
+		BLUE_L_ON();
+		BLUE_R_ON();
+	} else {
+		BLUE_L_OFF();
+		BLUE_R_OFF();
 	}
 }

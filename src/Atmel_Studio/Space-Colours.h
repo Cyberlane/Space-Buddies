@@ -29,3 +29,5 @@ colors_codes_t colours[10] = {
 	{ 255, 0, 255 }, // blue
 	{ 255, 255, 0 } // green
 };
+
+void set_colour(volatile colors_codes_t *codes);
