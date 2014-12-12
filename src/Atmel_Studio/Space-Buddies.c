@@ -21,10 +21,11 @@
 #define MAXPULSE 65000
 #define IR_RESOLUTION 24
 #define IR_HALFLIFE 11
-#define IR_ONE_BYTE 220
-#define IR_ZERO_BYTE 100
+#define IR_ONE_BYTE 25
+#define IR_ZERO_BYTE 15
 #define IR_BYTE_LOWER(byte) (byte - (byte / 10))
 #define IR_BYTE_UPPER(byte) (byte + (byte / 10))
+#define IR_DELAY 250
 // Audio
 #define vel 10000l;//1.25;
 
@@ -662,7 +663,7 @@ void send_IR_byte(uint8_t val)
 		};
 		
 		/* inter-bit time */
-		_delay_us(250);
+		_delay_us(IR_DELAY);
 	}
 	sei();
 }
