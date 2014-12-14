@@ -21,10 +21,12 @@
 #define MAXPULSE 65000
 #define IR_RESOLUTION 24
 #define IR_HALFLIFE 11
-#define IR_ONE_BYTE 25
-#define IR_ZERO_BYTE 15
-#define IR_BYTE_LOWER(byte) (byte - (byte / 10))
-#define IR_BYTE_UPPER(byte) (byte + (byte / 10))
+#define IR_ZERO 15
+#define IR_ONE 25
+#define IR_ZERO_LOWER 12
+#define IR_ZERO_UPPER 18
+#define IR_ONE_LOWER 22
+#define IR_ONE_UPPER 28
 #define IR_DELAY 250
 // Audio
 #define vel 10000l;//1.25;
@@ -259,12 +261,12 @@ uint8_t read_ir_data(void)
 			return validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
 		}
 		
-		if (lowpulse >= IR_BYTE_LOWER(IR_ONE_BYTE) && lowpulse <= IR_BYTE_UPPER(IR_ONE_BYTE))
+		if (lowpulse >= IR_ONE_LOWER && lowpulse <= IR_ONE_UPPER)
 		{
 			// this is a 1
 			buffer[currentByte] |= (1 << currentBit);
 		}
-		else if (lowpulse >= IR_BYTE_LOWER(IR_ZERO_BYTE) && lowpulse <= IR_BYTE_UPPER(IR_ZERO_BYTE))
+		else if (lowpulse >= IR_ZERO_LOWER && lowpulse <= IR_ZERO_UPPER)
 		{
 			// this is a 0
 			buffer[currentByte] &= ~(1 << currentBit);
@@ -653,7 +655,7 @@ void send_IR_byte(uint8_t val)
 	
 	cli();
 	for (i=0; i<8; i++) {
-		cycles = (val & (1 << i)) ? IR_ONE_BYTE : IR_ZERO_BYTE;
+		cycles = (val & (1 << i)) ? IR_ONE : IR_ZERO;
 		
 		while (cycles--) {
 			IR_TX_ON();
