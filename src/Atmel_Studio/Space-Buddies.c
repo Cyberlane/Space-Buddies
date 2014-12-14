@@ -19,14 +19,14 @@
 
 // Infrared
 #define MAXPULSE 65000
-#define IR_RESOLUTION 24
+#define IR_RESOLUTION 22
 #define IR_HALFLIFE 11
 #define IR_ZERO 15
 #define IR_ONE 25
 #define IR_ZERO_LOWER 12
-#define IR_ZERO_UPPER 18
+#define IR_ZERO_UPPER 20
 #define IR_ONE_LOWER 22
-#define IR_ONE_UPPER 28
+#define IR_ONE_UPPER 30
 #define IR_DELAY 250
 // Buttons
 #define BUTTON_HOLD 15
@@ -98,9 +98,10 @@ int main(void)
 			}
 			case STATE_SEND:
 			{
-				//TODO: Turn on some LEDs to signify data being sent (no PWM)
+				GREEN_R_ON();
 				send_data(currentTune);
 				_delay_ms(1000);
+				GREEN_R_OFF();
 				state = STATE_MAIN;
 				break;
 			}
@@ -195,6 +196,7 @@ state_t check_buttons(void)
 		left hold = receive
 		right press = skip/next
 		right hold = play current
+		both hold = reset
 		
 		anything else is just invalid and upon release of both buttons does nothing other than reset the counter
 	*/
@@ -305,18 +307,19 @@ uint8_t read_ir_data(void)
 		else
 		{
 			show_signal(lowpulse);
-			_delay_ms(2000);
-			// bad data, escape!
-			if (currentBit == 0)
-			{
-				show_error(4, 0);
-				// TODO: Add a CRC validator here
-			}
-			else
-			{
-				show_error(3, currentBit);
-				return STATE_MAIN;
-			}
+			//_delay_ms(2000);
+			//// bad data, escape!
+			//if (currentBit == 0)
+			//{
+				//show_error(4, 0);
+				//// TODO: Add a CRC validator here
+			//}
+			//else
+			//{
+				//show_error(3, currentBit);
+				//return STATE_MAIN;
+			//}
+			return STATE_MAIN;
 		}
 		
 		if (++currentBit == 8)
@@ -331,15 +334,12 @@ uint8_t read_ir_data(void)
 
 void send_data(volatile uint8_t index)
 {
-	GREEN_R_ON();
 	send_IR_byte(index);
-	
 	const uint8_t *ptr = stored_tunes.tunes[index];
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
 		send_IR_byte(data);
 	}
-	GREEN_R_OFF();
 }
 
 void play_tune(uint8_t currentTune)
@@ -357,7 +357,6 @@ void play_tune(uint8_t currentTune)
 
 uint8_t find_next_tune(uint8_t currentTune)
 {
-	BLUE_L_ON();
 	uint8_t idx = 0;
 	while(1)
 	{
@@ -367,7 +366,6 @@ uint8_t find_next_tune(uint8_t currentTune)
 			return idx;
 		}
 	}
-	BLUE_L_OFF();
 }
 
 uint8_t reset_game(void)
@@ -602,6 +600,8 @@ void save_buffer(volatile uint8_t *pByte)
 
 void show_error(uint8_t code, uint8_t subCode)
 {
+	clear_leds();
+	_delay_ms(500);
 	while(code--)
 	{
 		BLUE_R_ON();
@@ -631,6 +631,8 @@ void show_error(uint8_t code, uint8_t subCode)
 
 void show_signal(uint16_t signal)
 {
+	clear_leds();
+	_delay_ms(500);
 	uint8_t h = signal / 100;
 	uint8_t t = (signal % 100) / 10;
 	uint8_t s = (signal % 100) % 10;
