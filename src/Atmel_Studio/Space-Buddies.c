@@ -46,8 +46,6 @@ typedef enum {
 state_t state = STATE_INITIALISE;
 uint8_t currentTune = 0; // 0-9
 
-//TODO: Before each send, blink the current tune's LED colour
-
 int main(void)
 {
 	// Set RGB LEDs as output
@@ -307,18 +305,6 @@ uint8_t read_ir_data(void)
 		else
 		{
 			show_signal(lowpulse);
-			//_delay_ms(2000);
-			//// bad data, escape!
-			//if (currentBit == 0)
-			//{
-				//show_error(4, 0);
-				//// TODO: Add a CRC validator here
-			//}
-			//else
-			//{
-				//show_error(3, currentBit);
-				//return STATE_MAIN;
-			//}
 			return STATE_MAIN;
 		}
 		
@@ -353,6 +339,15 @@ void play_tune(uint8_t currentTune)
 	TIMER2_STOP();
 	_delay_ms(10);
 	clear_leds();
+}
+
+void play_success()
+{
+	const uint8_t *ptr = ffx;
+	while (*ptr != END_MARKER)
+	{
+		play_byte(*ptr++);
+	}
 }
 
 uint8_t find_next_tune(uint8_t currentTune)

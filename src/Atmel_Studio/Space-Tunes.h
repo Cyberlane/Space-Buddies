@@ -106,3 +106,10 @@ tunes_t stored_tunes EEMEM = {
 		0,0,0,0,0
 	}
 };
+
+uint8_t ffx[] = {
+	NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2),
+	NOTE(T_REST, 2), NOTE(T_DX, 12), NOTE(T_BB, 8), NOTE(T_CX, 8), NOTE(T_DX, 4),
+	NOTE(T_REST, 2), NOTE(T_CX, 2), NOTE(T_DX, 8),
+	END_MARKER
+};
