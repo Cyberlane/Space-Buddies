@@ -28,6 +28,8 @@
 #define IR_ONE_LOWER 22
 #define IR_ONE_UPPER 28
 #define IR_DELAY 250
+// Buttons
+#define BUTTON_HOLD 15
 // Audio
 #define vel 10000l;//1.25;
 
@@ -87,7 +89,11 @@ int main(void)
 			}
 			case STATE_RECEIVE:
 			{
+				RED_L_ON();
+				GREEN_R_ON();
 				state = read_ir_data();
+				RED_L_OFF();
+				GREEN_R_OFF();
 				break;
 			}
 			case STATE_SEND:
@@ -173,7 +179,7 @@ void intialise_game(void)
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
-	play_tune(currentTune);
+	//play_tune(currentTune);
 	clear_leds();
 }
 
@@ -186,6 +192,7 @@ state_t check_buttons(void)
 
 
 		left press = send
+		left hold = receive
 		right press = skip/next
 		right hold = play current
 		
@@ -203,19 +210,43 @@ state_t check_buttons(void)
 		}
 		leftCounter += left ? 1 : 0;
 		rightCounter += right ? 1 : 0;
+		
+		if (leftCounter == 0) {
+			RED_L_OFF();
+			GREEN_L_OFF();
+		} else if (leftCounter <= BUTTON_HOLD) {
+			RED_L_ON();
+		} else {
+			RED_L_OFF();
+			GREEN_L_ON();
+		}
+		if (rightCounter == 0) {
+			RED_R_OFF();
+			GREEN_R_OFF();
+		} else if (rightCounter <= BUTTON_HOLD) {
+			RED_R_ON();
+		} else {
+			RED_R_OFF();
+			GREEN_R_ON();
+		}
 		_delay_ms(200);
 	}
 	
-	if (leftCounter > 0 && leftCounter <= 20 && rightCounter == 0) {
+	RED_L_OFF();
+	GREEN_L_OFF();
+	RED_R_OFF();
+	GREEN_R_OFF();
+	
+	if (leftCounter > 0 && leftCounter <= BUTTON_HOLD && rightCounter == 0) {
 		return STATE_SEND;
-	} else if (rightCounter > 0 && rightCounter <= 20 && leftCounter == 0) {
+	} else if (rightCounter > 0 && rightCounter <= BUTTON_HOLD && leftCounter == 0) {
 		return STATE_SKIP;
-	} else if (rightCounter > 20 && leftCounter == 0) {
+	} else if (rightCounter > BUTTON_HOLD && leftCounter == 0) {
 		return STATE_PLAY;
-	} else if (leftCounter > 20 && rightCounter > 20) {
-		return STATE_RESET;
-	} else if (!IR_RX_READ()) {
+	} else if (leftCounter > BUTTON_HOLD && rightCounter == 0) {
 		return STATE_RECEIVE;
+	} else if (leftCounter > BUTTON_HOLD && rightCounter > BUTTON_HOLD) {
+		return STATE_RESET;
 	} else {
 		return STATE_MAIN;
 	}
