@@ -27,7 +27,7 @@
 #define IR_ZERO_UPPER 20
 #define IR_ONE_LOWER 22
 #define IR_ONE_UPPER 30
-#define IR_DELAY 250
+#define IR_DELAY 350
 // Buttons
 #define BUTTON_HOLD 15
 // Audio
