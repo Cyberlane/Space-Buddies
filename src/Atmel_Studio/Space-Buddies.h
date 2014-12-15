@@ -62,9 +62,10 @@ void show_signal(uint16_t signal);
 uint8_t find_next_tune(uint8_t currentTune);
 uint8_t get_tune_state(uint8_t tuneNumber);
 void make_tune_available(uint8_t index);
+uint8_t count_available_tunes();
 
 void send_data(volatile uint8_t index);
-void save_buffer(volatile uint8_t *pByte);
+uint8_t save_buffer(volatile uint8_t *pByte);
 
 void play_tune(uint8_t currentTune);
 void play_byte(uint8_t pByte);

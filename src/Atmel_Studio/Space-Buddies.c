@@ -40,7 +40,8 @@ typedef enum {
 	STATE_SEND,
 	STATE_PLAY,
 	STATE_RESET,
-	STATE_SKIP
+	STATE_SKIP,
+	STATE_SUCCESS
 } state_t;
 
 state_t state = STATE_INITIALISE;
@@ -126,6 +127,14 @@ int main(void)
 				state = reset_game();
 				break;
 			}
+			case STATE_SUCCESS:
+			{
+				play_tune(currentTune);
+				_delay_ms(2000);
+				play_success();
+				state = STATE_MAIN;
+				break;
+			}
 			default:
 			{
 				state = STATE_MAIN;
@@ -146,6 +155,7 @@ void timer_init(void)
 
 void intialise_game(void)
 {
+	//TODO: This handles 10 player mode, but not 2 player mode!
 	uint8_t selected = 99;
 	uint8_t i = 0;
 	
@@ -178,7 +188,6 @@ void intialise_game(void)
 	}
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
-	//play_tune(currentTune);
 	clear_leds();
 }
 
@@ -576,7 +585,7 @@ void play_tone(int tone, long tempo_value)
 	}
 }
 
-void save_buffer(volatile uint8_t *pByte)
+uint8_t save_buffer(volatile uint8_t *pByte)
 {
 	currentTune = *pByte;
 	uint8_t *ptr = stored_tunes.tunes[currentTune];
@@ -591,6 +600,24 @@ void save_buffer(volatile uint8_t *pByte)
 		TODO: Last byte is crc
     */
     make_tune_available(currentTune);
+	if (count_available_tunes() == 10)
+	{
+		return STATE_SUCCESS;
+	}
+	return STATE_PLAY;
+}
+
+uint8_t count_available_tunes()
+{
+	uint8_t counter = 0;
+	for (uint8_t i = 0; i < 10; i++)
+	{
+		if (eeprom_read_byte((uint8_t*)&stored_tunes.availableTunes[i]) == 1)
+		{
+			counter++;
+		}
+	}
+	return counter;
 }
 
 void show_error(uint8_t code, uint8_t subCode)
@@ -668,8 +695,7 @@ uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t curren
 		else
 		{
 			buffer[currentByte] = END_MARKER;
-			save_buffer(buffer);
-			return STATE_PLAY;
+			return save_buffer(buffer);
 		}
 	} else {
 		show_error(5, 0);
