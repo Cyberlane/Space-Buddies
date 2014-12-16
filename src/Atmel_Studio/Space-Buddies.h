@@ -45,7 +45,7 @@ void send_IR(int cycles);
 void send_IR_bit(uint8_t bit);
 void send_IR_byte(uint8_t val);
 
-uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode);
+uint8_t process_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode);
 uint8_t read_ir_data(void);
 
 uint8_t reset_game(void);
@@ -65,7 +65,7 @@ void make_tune_available(uint8_t index);
 uint8_t count_available_tunes();
 
 void send_data(volatile uint8_t index);
-uint8_t save_buffer(volatile uint8_t *pByte);
+uint8_t validate_and_save(uint8_t *pByte);
 
 void play_tune(uint8_t currentTune);
 void play_byte(uint8_t pByte);

@@ -12,6 +12,7 @@
 #include <avr/interrupt.h>
 #include <stdbool.h>
 #include <util/delay.h>
+#include <util/crc16.h>
 #include "Space-Buddies.h"
 #include "Space-Tunes.h"
 #include "Space-Colours.h"
@@ -41,7 +42,8 @@ typedef enum {
 	STATE_PLAY,
 	STATE_RESET,
 	STATE_SKIP,
-	STATE_SUCCESS
+	STATE_SUCCESS,
+	STATE_VALIDATION_FAIL
 } state_t;
 
 state_t state = STATE_INITIALISE;
@@ -132,6 +134,12 @@ int main(void)
 				play_tune(currentTune);
 				_delay_ms(2000);
 				play_success();
+				state = STATE_MAIN;
+				break;
+			}
+			case STATE_VALIDATION_FAIL:
+			{
+				show_error(5, 1);
 				state = STATE_MAIN;
 				break;
 			}
@@ -283,7 +291,7 @@ uint8_t read_ir_data(void)
 		
 		if (highpulse >= MAXPULSE)
 		{
-			return validate_buffer(currentPulse, currentBit, currentByte, buffer, 1);
+			return process_buffer(currentPulse, currentBit, currentByte, buffer, 1);
 		}
 		
 		/* pin isn't high anymore. See how long it's low */
@@ -298,7 +306,7 @@ uint8_t read_ir_data(void)
 		// While pin is low
 		if (lowpulse >= MAXPULSE)
 		{
-			return validate_buffer(currentPulse, currentBit, currentByte, buffer, 2);
+			return process_buffer(currentPulse, currentBit, currentByte, buffer, 2);
 		}
 		
 		if (lowpulse >= IR_ONE_LOWER && lowpulse <= IR_ONE_UPPER)
@@ -330,11 +338,15 @@ uint8_t read_ir_data(void)
 void send_data(volatile uint8_t index)
 {
 	send_IR_byte(index);
+	uint8_t crc = 0;
 	const uint8_t *ptr = stored_tunes.tunes[index];
 	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
 	{
 		send_IR_byte(data);
+		crc = _crc8_ccitt_update(crc, data);
 	}
+	crc = _crc8_ccitt_update(crc, END_MARKER);
+	send_IR_byte(crc);
 }
 
 void play_tune(uint8_t currentTune)
@@ -407,6 +419,7 @@ uint8_t is_right_button_pressed(void)
 
 void make_tune_available(uint8_t index)
 {
+	currentTune = index;
 	eeprom_update_byte((uint8_t*)&stored_tunes.availableTunes[index], 1);
 }
 
@@ -585,26 +598,33 @@ void play_tone(int tone, long tempo_value)
 	}
 }
 
-uint8_t save_buffer(volatile uint8_t *pByte)
+uint8_t validate_and_save(uint8_t *pByte)
 {
-	currentTune = *pByte;
-	uint8_t *ptr = stored_tunes.tunes[currentTune];
-	uint8_t ctr = 0;
-	while (*pByte != END_MARKER)
-	{
-		eeprom_update_byte(ptr++, *pByte++);
-		ctr++;
+	uint8_t *p;
+	uint8_t tuneNumber, calc_crc, rx_crc;
+	
+	p = pByte;
+	tuneNumber = *p++;
+	calc_crc = 0;
+	
+	do {
+		calc_crc = _crc8_ccitt_update(calc_crc, *p);
+	} while (*p++ != END_MARKER);
+	
+	rx_crc = *p;
+	if (calc_crc != rx_crc || tuneNumber > 9) {
+		return STATE_VALIDATION_FAIL;
 	}
-	eeprom_update_byte(ptr++, END_MARKER);
-    /*
-		TODO: Last byte is crc
-    */
-    make_tune_available(currentTune);
-	if (count_available_tunes() == 10)
-	{
-		return STATE_SUCCESS;
-	}
-	return STATE_PLAY;
+	
+	/* Validation has passed, let's save the tune to EEPROM */
+	
+	p = stored_tunes.tunes[tuneNumber];
+	pByte++;
+	do {
+		eeprom_update_byte(p++, *pByte);
+	} while (*pByte++ != END_MARKER);
+    make_tune_available(tuneNumber);
+	return (count_available_tunes() == 10) ? STATE_SUCCESS : STATE_PLAY;
 }
 
 uint8_t count_available_tunes()
@@ -683,7 +703,7 @@ void show_signal(uint16_t signal)
 	}
 }
 
-uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
+uint8_t process_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t currentByte, uint8_t *buffer, uint8_t errorCode)
 {
 	if (currentPulse != 0)
 	{
@@ -694,8 +714,9 @@ uint8_t validate_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t curren
 		}
 		else
 		{
-			buffer[currentByte] = END_MARKER;
-			return save_buffer(buffer);
+			buffer[currentByte] = buffer[currentByte - 1];
+			buffer[currentByte - 1] = END_MARKER;
+			return validate_and_save(buffer);
 		}
 	} else {
 		show_error(5, 0);
