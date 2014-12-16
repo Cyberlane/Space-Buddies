@@ -21,7 +21,6 @@
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 22
-#define IR_HALFLIFE 11
 #define IR_ZERO 15
 #define IR_ONE 25
 #define IR_ZERO_LOWER 12
