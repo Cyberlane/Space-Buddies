@@ -20,14 +20,14 @@
 
 // Infrared
 #define MAXPULSE 65000
-#define IR_RESOLUTION 22
+#define IR_RESOLUTION 26
 #define IR_ZERO 15
 #define IR_ONE 25
 #define IR_ZERO_LOWER 12
 #define IR_ZERO_UPPER 20
 #define IR_ONE_LOWER 22
-#define IR_ONE_UPPER 30
-#define IR_DELAY 350
+#define IR_ONE_UPPER 32
+#define IR_DELAY 1300
 // Buttons
 #define BUTTON_HOLD 15
 // Audio
@@ -363,7 +363,7 @@ void play_tune(uint8_t currentTune)
 
 void play_success()
 {
-	const uint8_t *ptr = ffx;
+	const uint8_t *ptr = complete;
 	while (*ptr != END_MARKER)
 	{
 		play_byte(*ptr++);

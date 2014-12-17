@@ -78,17 +78,11 @@ tunes_t stored_tunes EEMEM = {
 			NOTE(T_E, 5), NOTE(T_F, 7), END_MARKER
 		},
 		{
-			// Sonic
-			NOTE(T_CSX, 3), NOTE(T_REST, 4), NOTE(T_CSX, 3), NOTE(T_DX, 4), NOTE(T_B, 6),
-			NOTE(T_CSX, 3), NOTE(T_CSX, 3), NOTE(T_CSX, 3), NOTE(T_A, 3), NOTE(T_G, 4),
-			NOTE(T_B, 6), NOTE(T_REST, 3), NOTE(T_CSX, 3), NOTE(T_REST, 4), NOTE(T_CSX, 3),
-			NOTE(T_DX, 4), NOTE(T_B, 6), NOTE(T_CSX, 3), NOTE(T_CSX, 3), NOTE(T_CSX, 3),
-			NOTE(T_A, 3), NOTE(T_G, 4), NOTE(T_B, 5), NOTE(T_REST, 6), NOTE(T_A, 0),
-			NOTE(T_B, 0), NOTE(T_CSX, 0), NOTE(T_DX, 0), NOTE(T_EX, 0), NOTE(T_FSX, 0),
-			NOTE(T_B, 0), NOTE(T_CSX, 0), NOTE(T_EBX, 0), NOTE(T_EX, 0), NOTE(T_FSX, 0),
-			NOTE(T_ABX, 0), NOTE(T_EB, 0), NOTE(T_E, 0), NOTE(T_FS, 0), NOTE(T_AB, 0),
-			NOTE(T_A, 0), NOTE(T_B, 0), NOTE(T_F, 0), NOTE(T_FS, 0), NOTE(T_G, 0),
-			NOTE(T_BB, 0), NOTE(T_CX, 0), NOTE(T_CSX, 0), END_MARKER
+			// FFX
+			NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2),
+			NOTE(T_REST, 2), NOTE(T_DX, 12), NOTE(T_BB, 8), NOTE(T_CX, 8), NOTE(T_DX, 4),
+			NOTE(T_REST, 2), NOTE(T_CX, 2), NOTE(T_DX, 8),
+			END_MARKER
 		},
 		{
 			// Ducktales
@@ -102,14 +96,20 @@ tunes_t stored_tunes EEMEM = {
 		}
 	},
 	.availableTunes = {
-		0,0,0,0,0,
-		0,0,0,1,0
+		0,1,0,0,0,
+		0,0,0,0,0
 	}
 };
 
-uint8_t ffx[] = {
-	NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2),
-	NOTE(T_REST, 2), NOTE(T_DX, 12), NOTE(T_BB, 8), NOTE(T_CX, 8), NOTE(T_DX, 4),
-	NOTE(T_REST, 2), NOTE(T_CX, 2), NOTE(T_DX, 8),
-	END_MARKER
+uint8_t complete[] = {
+	NOTE(T_CSX, 3), NOTE(T_REST, 4), NOTE(T_CSX, 3), NOTE(T_DX, 4), NOTE(T_B, 6),
+	NOTE(T_CSX, 3), NOTE(T_CSX, 3), NOTE(T_CSX, 3), NOTE(T_A, 3), NOTE(T_G, 4),
+	NOTE(T_B, 6), NOTE(T_REST, 3), NOTE(T_CSX, 3), NOTE(T_REST, 4), NOTE(T_CSX, 3),
+	NOTE(T_DX, 4), NOTE(T_B, 6), NOTE(T_CSX, 3), NOTE(T_CSX, 3), NOTE(T_CSX, 3),
+	NOTE(T_A, 3), NOTE(T_G, 4), NOTE(T_B, 5), NOTE(T_REST, 6), NOTE(T_A, 0),
+	NOTE(T_B, 0), NOTE(T_CSX, 0), NOTE(T_DX, 0), NOTE(T_EX, 0), NOTE(T_FSX, 0),
+	NOTE(T_B, 0), NOTE(T_CSX, 0), NOTE(T_EBX, 0), NOTE(T_EX, 0), NOTE(T_FSX, 0),
+	NOTE(T_ABX, 0), NOTE(T_EB, 0), NOTE(T_E, 0), NOTE(T_FS, 0), NOTE(T_AB, 0),
+	NOTE(T_A, 0), NOTE(T_B, 0), NOTE(T_F, 0), NOTE(T_FS, 0), NOTE(T_G, 0),
+	NOTE(T_BB, 0), NOTE(T_CX, 0), NOTE(T_CSX, 0), END_MARKER
 };
