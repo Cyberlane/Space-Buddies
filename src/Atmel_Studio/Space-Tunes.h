@@ -78,11 +78,12 @@ tunes_t stored_tunes EEMEM = {
 			NOTE(T_E, 5), NOTE(T_F, 7), END_MARKER
 		},
 		{
-			// FFX
-			NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2), NOTE(T_REST, 2), NOTE(T_DX, 2),
-			NOTE(T_REST, 2), NOTE(T_DX, 12), NOTE(T_BB, 8), NOTE(T_CX, 8), NOTE(T_DX, 4),
-			NOTE(T_REST, 2), NOTE(T_CX, 2), NOTE(T_DX, 8),
-			END_MARKER
+			// Little Reindeer
+			NOTE(T_G, 4), NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), NOTE(T_G, 4),
+			NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), NOTE(T_CSX, 4), NOTE(T_CSX, 1),
+			NOTE(T_A, 5), NOTE(T_B, 4), NOTE(T_B, 1), NOTE(T_G, 5), NOTE(T_A, 4),
+			NOTE(T_G, 1), NOTE(T_A, 3), NOTE(T_CSX, 3), NOTE(T_B, 3), NOTE(T_A, 3),
+			NOTE(T_G, 4), NOTE(T_A, 1), NOTE(T_G, 3), NOTE(T_E, 5), END_MARKER
 		},
 		{
 			// Ducktales
