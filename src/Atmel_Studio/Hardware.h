@@ -22,24 +22,28 @@
 #define GREEN_L_DDR DDRD
 #define GREEN_L_ON() (GREEN_L_PORT |= (1 << GREEN_L))
 #define GREEN_L_OFF() (GREEN_L_PORT &= ~(1 << GREEN_L))
+#define GREEN_L_TOGGLE() (GREEN_L_PORT ^= (1 << GREEN_L))
 
 #define GREEN_R PB1
 #define GREEN_R_PORT PORTB
 #define GREEN_R_DDR DDRB
 #define GREEN_R_ON() (GREEN_R_PORT |= (1 << GREEN_R))
 #define GREEN_R_OFF() (GREEN_R_PORT &= ~(1 << GREEN_R))
+#define GREEN_R_TOGGLE() (GREEN_R_PORT ^= (1 << GREEN_R))
 
 #define BLUE_L PD0
 #define BLUE_L_PORT PORTD
 #define BLUE_L_DDR DDRD
 #define BLUE_L_ON() (BLUE_L_PORT |= (1 << BLUE_L))
 #define BLUE_L_OFF() (BLUE_L_PORT &= ~(1 << BLUE_L))
+#define BLUE_L_TOGGLE() (BLUE_L_PORT ^= (1 << BLUE_L))
 
 #define BLUE_R PB2
 #define BLUE_R_PORT PORTB
 #define BLUE_R_DDR DDRB
 #define BLUE_R_ON() (BLUE_R_PORT |= (1 << BLUE_R))
 #define BLUE_R_OFF() (BLUE_R_PORT &= ~(1 << BLUE_R))
+#define BLUE_R_TOGGLE() (BLUE_R_PORT ^= (1 << BLUE_R))
 
 #define BUTTON_LEFT PD3
 #define BUTTON_LEFT_PIN PIND

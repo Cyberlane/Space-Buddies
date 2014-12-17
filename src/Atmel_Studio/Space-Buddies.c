@@ -78,8 +78,7 @@ int main(void)
 		{
 			case STATE_INITIALISE:
 			{
-				intialise_game();
-				state = STATE_MAIN;
+				state = intialise_game();
 				break;
 			}
 			case STATE_MAIN:
@@ -160,9 +159,89 @@ void timer_init(void)
 	sei();
 }
 
-void intialise_game(void)
+uint8_t intialise_game(void)
 {
-	//TODO: This handles 10 player mode, but not 2 player mode!
+	uint8_t players = player_select();
+	clear_leds();
+	if (players == 2)
+	{
+		init_two_player();
+	}
+	else if (players == 10)
+	{
+		init_ten_player();
+	}
+	else
+	{
+		return STATE_INITIALISE;	
+	}
+	return STATE_MAIN;
+}
+
+void init_two_player(void)
+{
+	if (two_player_split() == 1)
+	{
+		make_tune_available(0);
+		make_tune_available(1);
+		make_tune_available(2);
+		make_tune_available(3);
+		make_tune_available(4);
+	}
+	else
+	{
+		make_tune_available(5);
+		make_tune_available(6);
+		make_tune_available(7);
+		make_tune_available(8);
+		make_tune_available(9);
+	}
+	clear_leds();
+	currentTune = find_next_tune(currentTune);
+}
+
+uint8_t two_player_split(void)
+{
+	BLUE_L_ON();
+	_delay_ms(250);
+	while(1)
+	{
+		BLUE_L_TOGGLE();
+		BLUE_R_TOGGLE();
+		if (is_left_button_pressed() == 1)
+		{
+			return 1;
+		}
+		if (is_right_button_pressed() == 1)
+		{
+			return 0;
+		}
+		_delay_ms(250);
+	}
+}
+
+uint8_t player_select(void)
+{
+	GREEN_L_ON();
+	_delay_ms(250);
+	while(1)
+	{
+		GREEN_L_TOGGLE();
+		GREEN_R_TOGGLE();
+		if (is_left_button_pressed() == 1)
+		{
+			return 2;
+		}
+		if (is_right_button_pressed() == 1)
+		{
+			return 10;
+		}
+		_delay_ms(250);
+	}
+}
+
+void init_ten_player(void)
+{
 	uint8_t selected = 99;
 	uint8_t i = 0;
 	

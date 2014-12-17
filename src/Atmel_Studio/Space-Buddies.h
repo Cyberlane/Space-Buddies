@@ -39,7 +39,11 @@ enum {
 	T_BX
 };
 
-void intialise_game(void);
+uint8_t intialise_game(void);
+uint8_t player_select(void);
+void init_two_player(void);
+void init_ten_player(void);
+uint8_t two_player_split(void);
 void timer_init(void);
 void send_IR(int cycles);
 void send_IR_bit(uint8_t bit);
