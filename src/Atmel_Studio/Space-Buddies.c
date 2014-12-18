@@ -161,19 +161,34 @@ void timer_init(void)
 
 uint8_t intialise_game(void)
 {
-	uint8_t players = player_select();
-	clear_leds();
-	if (players == 2)
+	uint8_t selected = 99;
+	uint8_t i = 0;
+	
+	while(i < 10)
 	{
-		init_two_player();
+		if (get_tune_state(i))
+		{
+			selected = i;
+			break;
+		}
+		i++;
 	}
-	else if (players == 10)
+	if (selected == 99)
 	{
-		init_ten_player();
-	}
-	else
-	{
-		return STATE_INITIALISE;	
+		uint8_t players = player_select();
+		clear_leds();
+		if (players == 2)
+		{
+			init_two_player();
+		}
+		else if (players == 10)
+		{
+			init_ten_player();
+		}
+		else
+		{
+			return STATE_INITIALISE;	
+		}
 	}
 	return STATE_MAIN;
 }
@@ -242,36 +257,21 @@ uint8_t player_select(void)
 
 void init_ten_player(void)
 {
-	uint8_t selected = 99;
 	uint8_t i = 0;
-	
-	while(i < 10)
+	TIMER2_START();
+	while(1)
 	{
-		if (get_tune_state(i))
+		i = i % 10;
+		set_colour(&colours[i]);
+		_delay_ms(500);
+		if (is_left_button_pressed() || is_right_button_pressed())
 		{
-			selected = i;
 			break;
 		}
 		i++;
 	}
-	if (selected == 99)
-	{
-		i = 0;
-		TIMER2_START();
-		while(1)
-		{
-			i = i % 10;
-			set_colour(&colours[i]);
-			_delay_ms(500);
-			if (is_left_button_pressed() || is_right_button_pressed())
-			{
-				break;
-			}
-			i++;
-		}
-		TIMER2_STOP();
-		make_tune_available(i);
-	}
+	TIMER2_STOP();
+	make_tune_available(i);
 	_delay_ms(500);
 	currentTune = find_next_tune(currentTune);
 	clear_leds();
@@ -353,19 +353,27 @@ uint8_t read_ir_data(void)
 	uint8_t currentBit = 0;
 	uint8_t currentByte = 0;
 	uint16_t currentPulse = 0;
-	uint16_t highpulse = 0;
+	uint16_t highpulse = MAXPULSE;
 	uint16_t lowpulse = 0;
+	//uint8_t waiting = 0;
+	
+	while (PINC & (1 << PC5)) {
+		_delay_us(IR_RESOLUTION/2);
+	}
 	
 	while(1)
 	{
-		// Start out with no pulse length
-		highpulse = lowpulse = 0;
+		//while (waiting < 15) {
+			// Start out with no pulse length
+			highpulse = lowpulse = 0;
 		
-		/* wait for a falling edge */
-		while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
-			highpulse++;
-			_delay_us(IR_RESOLUTION);
-		};
+			/* wait for a falling edge */
+			while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
+				highpulse++;
+				_delay_us(IR_RESOLUTION);
+			};
+			//waiting = (highpulse < MAXPULSE) ? 15 : waiting + 1;
+		//}
 		
 		if (highpulse >= MAXPULSE)
 		{
