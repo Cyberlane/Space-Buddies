@@ -97,7 +97,7 @@ tunes_t stored_tunes EEMEM = {
 		}
 	},
 	.availableTunes = {
-		0,1,0,0,0,
+		0,0,0,0,0,
 		0,0,0,0,0
 	}
 };
