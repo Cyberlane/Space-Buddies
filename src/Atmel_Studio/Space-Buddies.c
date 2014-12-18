@@ -21,13 +21,13 @@
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 26
-#define IR_ZERO 15
-#define IR_ONE 25
-#define IR_ZERO_LOWER 12
-#define IR_ZERO_UPPER 20
-#define IR_ONE_LOWER 22
-#define IR_ONE_UPPER 32
-#define IR_DELAY 1300
+#define IR_ZERO 20
+#define IR_ONE 50
+#define IR_ZERO_LOWER 10
+#define IR_ZERO_UPPER 30
+#define IR_ONE_LOWER 35
+#define IR_ONE_UPPER 60
+#define IR_DELAY 320
 // Buttons
 #define BUTTON_HOLD 15
 // Audio
@@ -355,7 +355,6 @@ uint8_t read_ir_data(void)
 	uint16_t currentPulse = 0;
 	uint16_t highpulse = MAXPULSE;
 	uint16_t lowpulse = 0;
-	//uint8_t waiting = 0;
 	
 	while (PINC & (1 << PC5)) {
 		_delay_us(IR_RESOLUTION/2);
@@ -363,17 +362,14 @@ uint8_t read_ir_data(void)
 	
 	while(1)
 	{
-		//while (waiting < 15) {
-			// Start out with no pulse length
-			highpulse = lowpulse = 0;
+		// Start out with no pulse length
+		highpulse = lowpulse = 0;
 		
-			/* wait for a falling edge */
-			while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
-				highpulse++;
-				_delay_us(IR_RESOLUTION);
-			};
-			//waiting = (highpulse < MAXPULSE) ? 15 : waiting + 1;
-		//}
+		/* wait for a falling edge */
+		while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
+			highpulse++;
+			_delay_us(IR_RESOLUTION);
+		};
 		
 		if (highpulse >= MAXPULSE)
 		{
@@ -424,15 +420,6 @@ uint8_t read_ir_data(void)
 void send_data(volatile uint8_t index)
 {
 	send_IR_byte(index);
-	uint8_t crc = 0;
-	const uint8_t *ptr = stored_tunes.tunes[index];
-	for(uint8_t data = eeprom_read_byte(ptr++); data != END_MARKER; data = eeprom_read_byte(ptr++))
-	{
-		send_IR_byte(data);
-		crc = _crc8_ccitt_update(crc, data);
-	}
-	crc = _crc8_ccitt_update(crc, END_MARKER);
-	send_IR_byte(crc);
 }
 
 void play_tune(uint8_t currentTune)
@@ -686,29 +673,11 @@ void play_tone(int tone, long tempo_value)
 
 uint8_t validate_and_save(uint8_t *pByte)
 {
-	uint8_t *p;
-	uint8_t tuneNumber, calc_crc, rx_crc;
-	
-	p = pByte;
-	tuneNumber = *p++;
-	calc_crc = 0;
-	
-	do {
-		calc_crc = _crc8_ccitt_update(calc_crc, *p);
-	} while (*p++ != END_MARKER);
-	
-	rx_crc = *p;
-	if (calc_crc != rx_crc || tuneNumber > 9) {
+	uint8_t tuneNumber = *pByte;
+	if (tuneNumber > 9) {
 		return STATE_VALIDATION_FAIL;
 	}
 	
-	/* Validation has passed, let's save the tune to EEPROM */
-	
-	p = stored_tunes.tunes[tuneNumber];
-	pByte++;
-	do {
-		eeprom_update_byte(p++, *pByte);
-	} while (*pByte++ != END_MARKER);
     make_tune_available(tuneNumber);
 	return (count_available_tunes() == 10) ? STATE_SUCCESS : STATE_PLAY;
 }
@@ -800,8 +769,6 @@ uint8_t process_buffer(uint8_t currentPulse, uint8_t currentBit, uint8_t current
 		}
 		else
 		{
-			buffer[currentByte] = buffer[currentByte - 1];
-			buffer[currentByte - 1] = END_MARKER;
 			return validate_and_save(buffer);
 		}
 	} else {
