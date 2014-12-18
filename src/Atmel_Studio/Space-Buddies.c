@@ -21,13 +21,13 @@
 // Infrared
 #define MAXPULSE 65000
 #define IR_RESOLUTION 26
-#define IR_ZERO 15
-#define IR_ONE 25
-#define IR_ZERO_LOWER 12
-#define IR_ZERO_UPPER 20
-#define IR_ONE_LOWER 22
-#define IR_ONE_UPPER 32
-#define IR_DELAY 1300
+#define IR_ZERO 20
+#define IR_ONE 60
+#define IR_ZERO_LOWER 10
+#define IR_ZERO_UPPER 30
+#define IR_ONE_LOWER 35
+#define IR_ONE_UPPER 70
+#define IR_DELAY 320
 // Buttons
 #define BUTTON_HOLD 15
 // Audio
@@ -355,7 +355,6 @@ uint8_t read_ir_data(void)
 	uint16_t currentPulse = 0;
 	uint16_t highpulse = MAXPULSE;
 	uint16_t lowpulse = 0;
-	//uint8_t waiting = 0;
 	
 	while (PINC & (1 << PC5)) {
 		_delay_us(IR_RESOLUTION/2);
@@ -363,17 +362,14 @@ uint8_t read_ir_data(void)
 	
 	while(1)
 	{
-		//while (waiting < 15) {
-			// Start out with no pulse length
-			highpulse = lowpulse = 0;
+		// Start out with no pulse length
+		highpulse = lowpulse = 0;
 		
-			/* wait for a falling edge */
-			while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
-				highpulse++;
-				_delay_us(IR_RESOLUTION);
-			};
-			//waiting = (highpulse < MAXPULSE) ? 15 : waiting + 1;
-		//}
+		/* wait for a falling edge */
+		while ((PINC & (1 << PC5)) && highpulse < MAXPULSE) {
+			highpulse++;
+			_delay_us(IR_RESOLUTION);
+		};
 		
 		if (highpulse >= MAXPULSE)
 		{
