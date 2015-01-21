@@ -7,15 +7,19 @@ url:          'http://www.space-buddies.com'
 domain:       'http://space-buddies.com'
 author:       'Justin Nel'
 description:  'The home for the Space Buddies on the internet, featuring instructions for the kits, tutorials, and more!'
+title:        'Space-Buddies | An Open Source project by Justin Nel'
+keywords:     'Space-Buddies, ATMega8, AVR, Kickstarter'
 
 source:              .
 destination:         ./_site
 plugins:             ./_plugins
 
+exclude:             [CNAME, README.md, .gitignore]
 future:              true
 lsi:                 false
 pygments:            false
-markdown:            rdiscount
+markdown:            kramdown
+highlighter:         pygments
 permalink:           '/blog/:year/:title'
 pagination_path:     '/blog/page:num/'
 include:             ['_pages']
@@ -43,3 +47,12 @@ kramdown:
     coderay_tab_width:          4
     coderay_bold_every:         10
     coderay_css:                style
+    
+colors:
+  black:     '#111111'
+  white:     '#f8f8f8'
+  blue:      '#49a7e9'
+  green:     '#9bcf2f'
+  purple:    '#c869bf'
+  orange:    '#fab125'
+  turquoise: '#0fbfcf'
