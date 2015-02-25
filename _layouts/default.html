@@ -1,78 +1,120 @@
-<!DOCTYPE html>
-{% assign description = page.description %}{% if description == null %}{% assign description = site.description %}{% endif %}
-{% if page.tags %}{% assign keywords = page.tags | join: ',' %}{% else %}{% assign keywords = page.categories | join: ',' %}{% endif %}
+<!DOCTYPE html> {% assign description = page.description %}{% if description == null %}{% assign description = site.description %}{% endif %} {% if page.tags %}{% assign keywords = page.tags | join: ',' %}{% else %}{% assign keywords = page.categories | join: ',' %}{% endif %}
 <html lang="en" dir="ltr" xmlns:fb="http://ogp.me/ns/fb#">
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="content-type" content="text/html;" />
-        <title>Space-Buddies | {{ page.title }}</title>
-        <meta name="robots" content="index,follow" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-        <meta name="description" content="{{ description }}" />
-        <meta name="keywords" content="{{ keywords }}" />
-        <link rel="canonical" href="{{ page.url }}" />
-        <!-- Facebook Meta Tags -->
-        <meta property="og:title" content="{{ page.title }}" />
-        <meta property="og:type" content="blog" />
-        <meta property="og:url" content="{{ site.url | append:page.url }}" />
-        <meta property="og:description" content="{{ description }}" />
-        <meta property="og:site_name" content="{{ site.name }}" />
-        <!-- Twitter Cards -->
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:site" content="@Cyberlane" />
-        <meta name="twitter:creator" content="@Cyberlane" />
-        <!-- Windows 8 -->
-        <meta name="msapplication-TileColor" content="#FFFFFF" />
-        <meta name="msapplicaiton-TileImage" content="/windows8-icon.png" />
-        <!-- Links -->
-        <link rel="start" href="{{ site.url }}" title="{{ site.name }}" />
-        <!-- CSS -->
-        <link rel="stylesheet" href="combo.css">
-        <link href="http://fonts.googleapis.com/css?family=Raleway:400,200,700" rel="stylesheet" type="text/css">
-        <link rel="stylesheet" hidden="//netdna.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">
-    </head>
-    <body>  <div id="main">
 
-    <nav><ul>
-      {% for node in site.posts reversed %}
-        {% capture id %}{{ node.id | remove:'/' | downcase }}{% endcapture %}
-        <li class="p-{{id}}"><a href="#{{id}}">{{node.title}}</a></li>
-      {% endfor %}
-    </ul></nav>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="content-type" content="text/html;" />
+    <title>Space-Buddies | {{ page.title }}</title>
+    <meta name="robots" content="index,follow" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="{{ description }}" />
+    <meta name="keywords" content="{{ keywords }}" />
+    <link rel="canonical" href="{{ page.url }}" />
+    <!-- Facebook Meta Tags -->
+    <meta property="og:title" content="{{ page.title }}" />
+    <meta property="og:type" content="blog" />
+    <meta property="og:url" content="{{ site.url | append:page.url }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:site_name" content="{{ site.name }}" />
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@Cyberlane" />
+    <meta name="twitter:creator" content="@Cyberlane" />
+    <!-- Windows 8 -->
+    <meta name="msapplication-TileColor" content="#FFFFFF" />
+    <meta name="msapplicaiton-TileImage" content="/windows8-icon.png" />
+    <!-- Links -->
+    <link rel="start" href="{{ site.url }}" title="{{ site.name }}" />
+    <!-- CSS -->
+    <link rel="stylesheet" href="combo.css">
+    <link href="http://fonts.googleapis.com/css?family=Raleway:400,200,700" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" hidden="//netdna.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">
+</head>
 
-
-    {% for page in site.posts reversed %}
-      {% capture id %}{{ page.id | remove:'/' | downcase }}{% endcapture %}
-      <div id="{{id}}" class="section p-{{id}}">
-        {% if page.icon %}
-        <div class="subtlecircle sectiondivider imaged">
-          <img src="{{page.icon}}" alt="section icon" />
-          <h5 class="icon-title">{{ page.title }}</h5>
+<body>
+    <div id="main">
+        <nav>
+            <ul>
+                <li class="p-blog2000intro active"><a href="#blog2000intro">intro</a>
+                </li>
+                <li class="p-blog2000assembly"><a href="#blog2000assembly">assembly</a>
+                </li>
+                <li class="p-blog2000operation"><a href="#blog2000operation">operation</a>
+                </li>
+                <li class="p-blog2000programming"><a href="#blog2000programming">programming</a>
+                </li>
+            </ul>
+        </nav>
+        <div class="mood">
+            <div class="mood-content">
+                Foo
+            </div>
+            <div class="image-container">
+                <img src="banner.jpg" />
+            </div>
         </div>
-        {% elsif page.fa-icon %}
-        <div class="subtlecircle sectiondivider faicon">
-          <span class="fa-stack">
+        <div id="blog2000intro" class="section p-blog2000intro">
+            <div class="container center">
+                <h3 id="introduction">Introduction</h3>
+                <p>Space-Buddies is an open source project created by me (Justin Nel), originally in 2014. The project was started off as an idea for a way to help people of all ages get into electronics. It was partially funded by Kickstarter and the remainder by myself.</p>
+                <p>I hit a number of obstacles in creating this project, a few more than I had originally expected, but I got there in the end!</p>
+                <h3>Please Note</h3>
+                <p>An update for the website will be ariving within the next few days which will include links to download the PDF booklet, programming instructions, and usage instructions. My apologies for the delay!</p>
+            </div>
+        </div>
+        <div id="blog2000assembly" class="section p-blog2000assembly">
+            <div class="subtlecircle sectiondivider faicon">
+                <span class="fa-stack">
             <i class="fa fa-circle fa-stack-2x"></i>
-            <i class="fa fa-{{ page.fa-icon }} fa-stack-1x"></i>
+            <i class="fa fa-check-square-o fa-stack-1x"></i>
           </span>
-          <h5 class="icon-title">{{ page.title }}</h5>
+                <h5 class="icon-title">assembly</h5>
+            </div>
+            <div class="container ">
+                <h3 id="assembly">Assembly</h3>
+                <p>My friend Adam Brunette was kind enough to record a great instructional video, demonstrating how to assemble the kits.</p>
+                <iframe width="560" height="315" src="./gE_xiU5wvSk.html" frameborder="0" allowfullscreen=""></iframe>
+            </div>
         </div>
-        {% endif %}
-        <div class="container {{ page.style }}">
-          {{ page.content }}
+        <div id="blog2000operation" class="section p-blog2000operation">
+            <div class="subtlecircle sectiondivider faicon">
+                <span class="fa-stack">
+            <i class="fa fa-circle fa-stack-2x"></i>
+            <i class="fa fa-toggle-on fa-stack-1x"></i>
+          </span>
+                <h5 class="icon-title">operation</h5>
+            </div>
+            <div class="container ">
+                <h3 id="operation">Operation</h3>
+                <p>Operation instructions are coming soon.</p>
+                <i class="file-pdf" />
+            </div>
         </div>
-      </div>
-    {% endfor %}
+        <div id="blog2000programming" class="section p-blog2000programming">
 
+            <div class="subtlecircle sectiondivider faicon">
+                <span class="fa-stack">
+            <i class="fa fa-circle fa-stack-2x"></i>
+            <i class="fa fa-plug fa-stack-1x"></i>
+          </span>
+                <h5 class="icon-title">programming</h5>
+            </div>
 
-    <div id="footer" class="section text-white">
-      <div class="container">
-        {% capture foottext %} {% include footer.md %} {% endcapture %}
-        {{ foottext | markdownify }}
-      </div>
+            <div class="container ">
+                <h3 id="programming">Programming</h3>
+                <p>Programming instructions are coming soon.</p>
+            </div>
+        </div>
+        <div id="footer" class="section text-white">
+            <div class="container">
+
+                <p>Site Design by Tom O’Brien <a href="http://t413.com/">t413.com</a> </p>
+
+            </div>
+        </div>
     </div>
-  </div>
-    </body>
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-    <script src="site.js"></script>
+</body>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script src="site.js"></script>
+
 </html>
